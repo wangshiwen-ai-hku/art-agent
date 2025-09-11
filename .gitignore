@@ -214,6 +214,7 @@ logs/
 
 # Test files
 *test.py
+test*
 
 # Deprecated files
 deprecated*

@@ -72,9 +72,9 @@ class MultimodalInputProcessor:
     def create_human_message(
         self,
         text: str,
-        image_data: Optional[str] = None,
-        image_url: Optional[str] = None,
-        audio_url: Optional[str] = None,
+        image_data: Optional[List[str]] = None,
+        image_url: Optional[List[str]] = None,
+        audio_url: Optional[List[str]] = None,
         **kwargs,
     ) -> HumanMessage:
         """
@@ -106,9 +106,11 @@ class MultimodalInputProcessor:
 
         # Process image inputs
         if image_data:
-            content_blocks.append(self._process_image_base64(image_data))
+            for image in image_data:
+                content_blocks.append(self._process_image_base64(image))
         if image_url:
-            content_blocks.append(self._process_image_url(image_url))
+            for url in image_url:
+                content_blocks.append(self._process_image_url(url))
 
         # If only text provided, return simple text message
         if len(content_blocks) == 1 and content_blocks[0]["type"] == "text":
@@ -116,46 +118,74 @@ class MultimodalInputProcessor:
 
         # Return multimodal message
         return HumanMessage(content=content_blocks)
-
+    
     def _process_image_base64(self, image_data: str) -> Dict[str, Any]:
-        """Process base64 image data"""
-        # Try to decode to verify it's valid
+        """返回 LangChain 标准 image_url block"""
         decoded = base64.b64decode(image_data)
-
-        # Detect MIME type from data
         mime_type = self._detect_image_mime_type(decoded)
-
         if mime_type not in self.SUPPORTED_IMAGE_TYPES:
             raise ValueError(f"Unsupported image format: {mime_type}")
 
-        return {
-            "type": "image",
-            "source_type": "base64",
-            "data": image_data,
-            "mime_type": mime_type,
-        }
+        # 拼成 data URL
+        data_url = f"data:{mime_type};base64,{image_data}"
+        return {"type": "image_url", "image_url": {"url": data_url}}
+
 
     def _process_image_url(self, image_url: str) -> Dict[str, Any]:
-        """Process image URL"""
-        # Validate URL format
-        parsed_url = urlparse(image_url)
-        if not parsed_url.scheme or not parsed_url.netloc:
+        """返回标准 image_url block"""
+        parsed = urlparse(image_url)
+        if not parsed.scheme or not parsed.netloc:
             raise ValueError("Invalid image URL format")
 
-        # Try to fetch the image to validate it exists and get MIME type
-        response = requests.head(image_url, timeout=10)
-        response.raise_for_status()
+        # 可选：校验可访问性
+        resp = requests.head(image_url, timeout=10)
+        resp.raise_for_status()
+        mime_type = resp.headers.get("content-type", "").lower()
+        if mime_type not in self.SUPPORTED_IMAGE_TYPES:
+            raise ValueError(f"Unsupported image format: {mime_type}")
 
-        content_type = response.headers.get("content-type", "").lower()
-        if content_type not in self.SUPPORTED_IMAGE_TYPES:
-            raise ValueError(f"Unsupported image format: {content_type}")
+        # 直接透传
+        return {"type": "image_url", "image_url": {"url": image_url}}
 
-        return {
-            "type": "image",
-            "source_type": "url",
-            "url": image_url,
-            "mime_type": content_type,
-        }
+    # def _process_image_base64(self, image_data: str) -> Dict[str, Any]:
+    #     """Process base64 image data"""
+    #     # Try to decode to verify it's valid
+    #     decoded = base64.b64decode(image_data)
+
+    #     # Detect MIME type from data
+    #     mime_type = self._detect_image_mime_type(decoded)
+
+    #     if mime_type not in self.SUPPORTED_IMAGE_TYPES:
+    #         raise ValueError(f"Unsupported image format: {mime_type}")
+
+    #     return {
+    #         "type": "image",
+    #         "source_type": "base64",
+    #         "data": image_data,
+    #         "mime_type": mime_type,
+    #     }
+
+    # def _process_image_url(self, image_url: str) -> Dict[str, Any]:
+    #     """Process image URL"""
+    #     # Validate URL format
+    #     parsed_url = urlparse(image_url)
+    #     if not parsed_url.scheme or not parsed_url.netloc:
+    #         raise ValueError("Invalid image URL format")
+
+    #     # Try to fetch the image to validate it exists and get MIME type
+    #     response = requests.head(image_url, timeout=10)
+    #     response.raise_for_status()
+
+    #     content_type = response.headers.get("content-type", "").lower()
+    #     if content_type not in self.SUPPORTED_IMAGE_TYPES:
+    #         raise ValueError(f"Unsupported image format: {content_type}")
+
+    #     return {
+    #         "type": "image",
+    #         "source_type": "url",
+    #         "url": image_url,
+    #         "mime_type": content_type,
+    #     }
 
     def _detect_image_mime_type(self, data: bytes) -> str:
         """Detect MIME type from image data"""
@@ -372,3 +402,54 @@ def create_multimodal_message(
         audio_url=audio_url,
         **kwargs,
     )
+    
+# 在原来文件末尾追加即可
+from typing import List, Union
+from google.genai.types import Part   # 需要 google-genai>=1.0
+
+def create_vertex_multimodal_message(
+    text: Optional[str] = None,
+    image_data: Optional[List[str]] = None,
+    image_url: Optional[List[str]] = None,
+    audio_url: Optional[str] = None,
+) -> List[Union[str, Part]]:
+    """
+    专为 Vertex AI (google-genai SDK) 准备的多模态输入函数。
+    参数语义与 create_multimodal_message 完全一致，但返回的是
+    contents 列表，可直接传给
+        client.models.generate_content(model="gemini-2.0-flash", contents=contents)
+    """
+    global _processor
+    if _processor is None:
+        _processor = MultimodalInputProcessor()
+
+    contents: List[Union[str, Part]] = []
+
+    # 1. 处理文本（含音频转写）
+    if audio_url:
+        transcribed = _processor._convert_audio_to_text(audio_url)
+        text = (text or "") + f"\n\n<上传音频的文字转录内容>\n{transcribed}\n</上传音频的文字转录内容>"
+    if text:
+        contents.append(text)
+
+    # 2. 处理 base64 图片
+    if image_data:
+        for b64 in image_data:
+            mime = _processor._detect_image_mime_type(base64.b64decode(b64))
+            if mime not in _processor.SUPPORTED_IMAGE_TYPES:
+                raise ValueError(f"Unsupported image format: {mime}")
+            contents.append(Part.from_bytes(data=b64, mime_type=mime))
+
+    # 3. 处理图片 URL（Vertex 同样支持 http/https）
+    if image_url:
+        for url in image_url:
+            # 复用原逻辑做可达性与格式校验
+            block = _processor._process_image_url(url)   # 返回 {"type":"image_url", "image_url":{"url":url}}
+            contents.append(Part.from_uri(file_uri=block["image_url"]["url"], mime_type="image/jpeg"))
+
+    if not contents:
+        raise ValueError("No text or media provided")
+
+    return contents
+
+

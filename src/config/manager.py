@@ -30,7 +30,7 @@ class ConfigManager:
 
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from YAML file."""
-        with open(self._config_path, "r") as f:
+        with open(self._config_path, "r", encoding="utf-8") as f:
             config_content = f.read()
 
         # Expand environment variables in the config content

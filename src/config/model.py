@@ -28,7 +28,7 @@ class MCPServerConfig:
 class AgentConfig:
     """Agent configuration."""
 
-    model: ModelConfig
+    model: ModelConfig 
     agent_name: Optional[str] = None
     agent_type: Optional[str] = None
     agent_category: Optional[str] = None

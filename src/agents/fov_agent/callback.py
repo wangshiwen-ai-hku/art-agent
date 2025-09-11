@@ -6,9 +6,9 @@ from langchain.schema import LLMResult
 
 logger = logging.getLogger(__name__)
 
-class SummaryNodeCallback(BaseCallbackHandler):
-    """专门监控 summary_node 里 LLM 的耗时、输入、输出"""
-    def __init__(self, node_name: str = "summary_node"):
+class DesignerNodeCallback(BaseCallbackHandler):
+    """专门监控 designer_node 里 LLM 的耗时、输入、输出"""
+    def __init__(self, node_name: str = "designer_node"):
         super().__init__()
         self.node_name = node_name
 
@@ -24,9 +24,9 @@ class SummaryNodeCallback(BaseCallbackHandler):
     ) -> None:
         self._start = time.time()
         # 把完整请求体落盘（OpenAI 接口能看到 messages 字段）
-        logger.info("[summary] 📤 请求体: %s", json.dumps(kwargs.get("invocation_params", {}), ensure_ascii=False, indent=2))
+        logger.info("[designer] 📤 请求体: %s", json.dumps(kwargs.get("invocation_params", {}), ensure_ascii=False, indent=2))
         for idx, p in enumerate(prompts):
-            logger.info("[summary] 📝 prompt-%d: %.800s", idx, p)
+            logger.info("[designer] 📝 prompt-%d: %.800s", idx, p)
             logger.info(f"[{self.node_name}] ⏱  LLM 启动, run_id={run_id}")
             # 把 prompt 也落盘（太长可以只打印前 500 字符）
             for idx, p in enumerate(prompts):

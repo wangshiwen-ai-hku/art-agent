@@ -24,7 +24,7 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-
+# set PYTHONUTF8=1
 class BaseAgent(ABC):
     """Base class for LLM-based agents."""
 
@@ -53,15 +53,20 @@ class BaseAgent(ABC):
 
         logger.info(f"Loaded tools: {[tool.name for tool in self._tools]}")
         logger.info(f"Loaded system prompt: {self._system_prompt}")
-
-        self._llm = init_chat_model(**asdict(self._model_config))
+        self._init_llm()
+        
         if self._tools:
             self._llm = self._llm.bind_tools(self._tools)
 
         self._graph = self.build_graph()
+    
 
         self.compiled_graph = self.compile_graph()  # entry_point
-
+        
+    @abstractmethod
+    def _init_llm(self):
+        self._llm = init_chat_model(**asdict(self._model_config))
+        
     @abstractmethod
     def _load_system_prompt(self):
         """Load the system prompt for the agent."""
