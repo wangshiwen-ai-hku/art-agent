@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古典风格PPT模板 - 真正防溢出版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #f5f1eb 0%, #e8ddd4 100%);
+            font-family: 'Noto Serif SC', '宋体', 'SimSun', serif;
+            padding: 1rem;
+        }
+
+        /* 容器：保持16:9比例，隐藏溢出 */
+        .ppt-container {
+            width: 100%;
+            max-width: 1280px;
+            box-shadow: 
+                0 8px 32px rgba(139, 69, 19, 0.2),
+                0 4px 16px rgba(160, 82, 45, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            border: 2px solid #d4af37;
+            background: linear-gradient(145deg, #fefcf8 0%, #f9f6f0 100%);
+        }
+
+        /* 幻灯片：固定尺寸，flex布局 */
+        .slide {
+            width: 1280px;
+            min-height: 720px;
+            background: 
+                linear-gradient(135deg, rgba(212, 175, 55, 0.03) 0%, rgba(139, 69, 19, 0.02) 100%),
+                radial-gradient(circle at 80% 20%, rgba(184, 134, 11, 0.05) 0%, transparent 50%),
+                #fefcf8;
+            position: relative;
+            transform-origin: top left;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部装饰：固定高度 */
+        .deco-header {
+            flex: 0 0 auto;
+            height: 80px;
+            background: linear-gradient(180deg, 
+                rgba(139, 69, 19, 0.08) 0%, 
+                rgba(160, 82, 45, 0.05) 50%,
+                transparent 100%);
+            border-bottom: 3px double #d4af37;
+            display: flex;
+            align-items: center;
+            padding: 0 50px;
+            position: relative;
+            z-index: 20;
+        }
+
+        .header-gradient-bar {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, 
+                #d4af37 0%, #f4e4bc 25%, #d4af37 50%, #b8860b 75%, #d4af37 100%);
+        }
+
+        .header-classical-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .classical-seal {
+            width: 45px; height: 45px;
+            background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+            border-radius: 50%; border: 2px solid #8b4513;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.3), 0 2px 8px rgba(139, 69, 19, 0.3);
+        }
+
+        .classical-seal::before {
+            content: '文'; color: #8b4513; font-size: 20px; font-weight: 900;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .classical-square {
+            width: 35px; height: 35px;
+            background: linear-gradient(45deg, #daa520 0%, #b8860b 100%);
+            border: 1px solid #8b4513; transform: rotate(45deg);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 1px 4px rgba(139, 69, 19, 0.2);
+        }
+
+        .classical-dot {
+            width: 12px; height: 12px;
+            background: radial-gradient(circle, #d4af37 30%, #b8860b 100%);
+            border-radius: 50%; border: 1px solid #8b4513;
+        }
+
+        .header-lines-right {
+            display: flex; flex-direction: column; gap: 8px; margin-left: auto;
+        }
+
+        .classical-line {
+            height: 2px; border-radius: 1px; position: relative;
+            background: linear-gradient(90deg, transparent 0%, #d4af37 20%, #b8860b 50%, #d4af37 80%, transparent 100%);
+        }
+
+        .classical-line::before {
+            content: ''; position: absolute; right: 0; top: -2px;
+            width: 6px; height: 6px; background: #d4af37;
+            border-radius: 50%; border: 1px solid #8b4513;
+        }
+
+        .classical-line-1 { width: 140px; }
+        .classical-line-2 { width: 100px; }
+        .classical-line-3 { width: 120px; }
+
+        /* 内容区：占用剩余空间，隐藏溢出 */
+        .content {
+            flex: 1 1 auto;
+            padding: 30px 60px;
+            gap: 20px;
+        }
+
+        /* 底部：固定高度 */
+        .footer {
+            flex: 0 0 auto;
+            padding: 15px 60px;
+            border-top: 1px solid rgba(212, 175, 55, 0.3);
+            font-size: 14px;
+            color: #8b4513;
+            background: rgba(248, 245, 238, 0.5);
+        }
+
+        /* 装饰元素：绝对定位，不影响布局 */
+        .deco-right-lines {
+            position: absolute; right: 50px; top: 130px;
+            height: 180px; width: 3px;
+            background: linear-gradient(180deg, #d4af37 0%, #daa520 30%, #b8860b 70%, #8b4513 100%);
+            border-radius: 2px;
+            box-shadow: inset 0 0 4px rgba(139, 69, 19, 0.3), 2px 0 6px rgba(139, 69, 19, 0.2);
+        }
+
+        .deco-right-lines::before {
+            content: ''; position: absolute; left: 15px; top: 30px;
+            height: 120px; width: 2px;
+            background: linear-gradient(180deg, #daa520 0%, #b8860b 50%, #8b4513 100%);
+            border-radius: 1px;
+        }
+
+        .deco-corner-classical {
+            position: absolute; bottom: 30px; right: 30px;
+            width: 120px; height: 120px; opacity: 0.7; z-index: 10;
+        }
+
+        .classical-border-pattern {
+            position: absolute; top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 4px;
+            pointer-events: none;
+        }
+
+        /* 内容样式 */
+        .classical-title {
+            font-size: 2.5rem; font-weight: 700; color: #8b4513;
+            text-align: center; margin-bottom: 20px; position: relative;
+            text-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+        }
+
+        .classical-title::after {
+            content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 3px;
+            background: linear-gradient(90deg, transparent 0%, #d4af37 20%, #b8860b 50%, #d4af37 80%, transparent 100%);
+        }
+
+        .classical-text {
+            font-size: 1.1rem; line-height: 1.6; color: #5d4037;
+            text-align: justify; letter-spacing: 0.5px; text-indent: 2em;
+        }
+
+        .classical-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 245, 238, 0.8) 100%);
+            border: 2px solid rgba(212, 175, 55, 0.3); border-radius: 8px;
+            padding: 20px; margin-bottom: 15px;
+            box-shadow: 0 4px 16px rgba(139, 69, 19, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            position: relative;
+        }
+
+        .classical-card::before {
+            content: ''; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px;
+            border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 4px; pointer-events: none;
+        }
+
+        /* 多列布局 */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .three-column {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ppt-container">
+        <div class="slide">
+            
+            <!-- 装饰边框 -->
+            <div class="classical-border-pattern"></div>
+            
+            <!-- 顶部装饰 -->
+            <div class="deco-header">
+                <div class="header-gradient-bar"></div>
+                <div class="header-classical-left">
+                    <div class="classical-seal"></div>
+                    <div class="classical-square"></div>
+                    <div class="classical-dot"></div>
+                </div>
+                <div class="header-lines-right">
+                    <div class="classical-line classical-line-1"></div>
+                    <div class="classical-line classical-line-2"></div>
+                    <div class="classical-line classical-line-3"></div>
+                </div>
+            </div>
+
+            <!-- 内容区域 -->
+            <div class="content">
+                <h1 class="classical-title">机器学习概论</h1>
+                
+                <div class="classical-card">
+                    <p class="classical-text">
+                        <span style="font-size: 1.3rem; margin-right: 8px;">📚</span>
+                        <strong>课程简介：</strong>本课程系统介绍机器学习的基本理论、核心算法及其在实际问题中的应用。
+                    </p>
+                </div>
+
+                <div class="two-column">
+                    <div class="classical-card">
+                        <p class="classical-text">
+                            <span style="font-size: 1.3rem; margin-right: 8px;">🔍</span>
+                            <strong>监督学习：</strong>分类与回归算法，包括线性模型、决策树、神经网络等方法。
+                        </p>
+                    </div>
+                    
+                    <div class="classical-card">
+                        <p class="classical-text">
+                            <span style="font-size: 1.3rem; margin-right: 8px;">🎯</span>
+                            <strong>无监督学习：</strong>聚类分析、降维技术等，用于发现数据中的隐藏模式。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="classical-card">
+                    <p class="classical-text">
+                        <span style="font-size: 1.3rem; margin-right: 8px;">💡</span>
+                        <strong>实践应用：</strong>结合案例学习数据预处理、特征工程、模型评估等关键技能，培养解决实际问题的能力。
+                    </p>
+                </div>
+            </div>
+
+            <!-- 底部信息 -->
+            <div class="footer">
+                授课教师：AI教学团队 | 课程代码：CS401 | 学分：3分
+            </div>
+
+            <!-- 装饰元素 -->
+            <div class="deco-right-lines"></div>
+            <div class="deco-corner-classical">
+                <svg width="100%" height="100%" viewBox="0 0 120 120" fill="none">
+                    <circle cx="60" cy="60" r="55" stroke="#D4AF37" stroke-width="2" fill="none" opacity="0.6"/>
+                    <circle cx="60" cy="60" r="40" stroke="#B8860B" stroke-width="1.5" fill="none" opacity="0.7"/>
+                    <circle cx="60" cy="60" r="25" stroke="#8B4513" stroke-width="1" fill="none" opacity="0.8"/>
+                    <path d="M60 35 L65 45 L75 40 L70 50 L85 55 L75 60 L80 70 L70 65 L65 75 L60 65 L55 75 L50 65 L40 70 L45 60 L30 55 L40 50 L35 40 L45 45 L55 35 L60 45 Z" 
+                          fill="#D4AF37" opacity="0.4"/>
+                    <circle cx="60" cy="60" r="3" fill="#8B4513"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentZoom = 100;
+        
+        // 设置缩放比例
+        function setZoom(zoomPercent) {
+            currentZoom = zoomPercent;
+            
+            // 使用CSS zoom属性实现浏览器级别缩放
+            if (document.body.style.zoom !== undefined) {
+                document.body.style.zoom = (zoomPercent / 100) + '';
+            } else {
+                // 兼容性fallback
+                document.body.style.transform = `scale(${zoomPercent / 100})`;
+                document.body.style.transformOrigin = 'top left';
+            }
+        }
+        
+        // 自动适配屏幕尺寸
+        function autoFitZoom() {
+            const container = document.querySelector('.ppt-container');
+            const screenWidth = window.innerWidth - 40;
+            const screenHeight = window.innerHeight - 40;
+            
+            const containerWidth = 1280;
+            const containerHeight = container.offsetHeight;
+            
+            // 计算适配比例，取最小值确保完全适配
+            const scaleX = (screenWidth / containerWidth) * 100;
+            const scaleY = (screenHeight / containerHeight) * 100;
+            const autoZoom = Math.min(scaleX, scaleY, 100);
+            
+            setZoom(Math.round(autoZoom));
+        }
+        
+        // 禁用浏览器默认的缩放行为，只保留自动适配
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault(); // 阻止默认缩放行为
+            }
+        });
+        
+        // 禁用键盘缩放快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '=' || e.key === '-' || e.key === '0') {
+                    e.preventDefault(); // 阻止默认缩放行为
+                }
+            }
+        });
+        
+        // 确保居中功能
+        function ensureCenter() {
+            const container = document.querySelector('.ppt-container');
+            if (container) {
+                // 使用CSS确保容器水平居中
+                container.style.marginLeft = 'auto';
+                container.style.marginRight = 'auto';
+                container.style.display = 'block';
+                
+                // 对于缩放后的垂直居中
+                const body = document.body;
+                body.style.display = 'flex';
+                body.style.justifyContent = 'center';
+                body.style.alignItems = 'center';
+            }
+        }
+        
+        // 窗口大小变化时自动重新适配并确保居中
+        window.addEventListener('resize', function() {
+            autoFitZoom();
+            ensureCenter();
+        });
+        
+        // 页面加载完成后自动适配并居中
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                autoFitZoom();
+                ensureCenter();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

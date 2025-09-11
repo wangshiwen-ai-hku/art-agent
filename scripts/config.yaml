@@ -1,0 +1,197 @@
+# MCP Server Configuration
+mcp_servers:
+  # calculator: # Calculator server for mathematical operations (just for test; will be replaced by python interpreter)
+  #   transport: http
+  #   url: http://localhost:8001/mcp/calculator
+  #   enabled_tools: [calculator_solve_quadratic]
+  highschool-library:
+    transport: sse
+    url: ${HIGH_SCHOOL_LIBRARY_URL}
+    enabled_tools: [retrieve_relevant_document]
+
+# Model Configuration
+default_model:
+  model_provider: openai
+  model: gpt-4.1-mini
+  temperature: 1
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
+
+# Agent Categories
+agents:
+  # Core Agents
+  core:
+    coordinator:
+      tools: [handoff_to_other_agent, tavily_search]
+
+    chat:
+      model: # if not specified, the default_model is automatically used
+        model_provider: openai
+        model: gpt-4.1-mini
+        temperature: 1
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+      tools: [tavily_search]
+
+    router_react: # multi-agent configuration with handoff mechanism
+      agents:
+        - agent_name: router
+          tools: [think_tool, plan_tool, handoff_to_other_agent, step_done] 
+          # TODO can include exp_tool
+        - agent_name: react # Provides tools for specialized agents
+          tools:
+            [tavily_search, retrieve_relevant_image, retrieve_relevant_video]
+
+    deep_researcher: # multi-agent configuration
+      # Deep researcher specific configuration
+      config:
+        # Plan and execution configuration
+        max_step_num: 8 # Maximum number of steps in a plan
+        max_search_results: 5 # Maximum number of search results
+        auto_accepted_plan: false # Whether to automatically accept plans
+
+      agents:
+        - agent_name: researcher
+          tools:
+            [
+              retrieve_relevant_document,
+              tavily_search,
+              retrieve_relevant_image,
+              retrieve_relevant_video,
+            ]
+        - agent_name: planner
+        - agent_name: background_investigator
+          tools: [retrieve_relevant_document]
+        - agent_name: generator
+        - agent_name: resource_query
+
+    ppt_agent:
+      model:
+        model_provider: openai
+        model: zai-org/GLM-4.5-Air
+        temperature: 0.7
+        base_url: https://api.siliconflow.cn/v1
+        api_key: sk-mqseyiqndglrkqbgmvqkgakyzdowhnbpxaihdwtsewsqscjs
+      tools: [ppt_template_select]
+      config:
+        prompts_dir: "src/agents/prompts/teacher/ppt"
+        templates_dir: "src/infra/templates/ppt"
+        max_concurrent_slides: 8
+        retry:
+          max_retries: 3
+          base_delay_sec: 1.5
+
+  # Student Domain Agents
+  student:
+    general_student: # multi-agent configuration for versatile learning
+      # General student specific configuration
+      config:
+        max_components: 3 # Maximum number of learning components in a plan
+      agents:
+        - agent_name: entry_agent
+          tools: []
+        - agent_name: planner_agent
+          tools: []
+        - agent_name: document_expert_agent
+          tools: []
+        - agent_name: resource_expert_agent
+          tools: []
+        - agent_name: exercise_expert_agent
+          tools: []
+
+    exercise: # standalone exercise agent for generating practice questions
+      model:
+        model_provider: openai
+        model: gpt-4.1-mini
+        temperature: 0.7
+        base_url: ${OPENAI_BASE_URL}
+        api_key: ${OPENAI_API_KEY}
+      tools: [tavily_search, retrieve_relevant_document]
+      config:
+        max_questions: 10 # Maximum number of questions to generate
+        default_duration: 30 # Default exercise duration in minutes
+        supported_question_types: ["选择题", "判断题", "开放式问题"]
+        difficulty_levels: ["基础", "中等", "提高"]
+        default_difficulty_distribution:
+          基础: 0.4
+          中等: 0.4
+          提高: 0.2
+
+    tutor:
+      tools: [retrieve_relevant_document, tavily_search]
+
+    solver:
+      tools: [
+          retrieve_relevant_document,
+          tavily_search,
+          calculator_solve_quadratic,
+        ] # will be replaced with python interpreter
+
+    planner:
+      tools: [retrieve_relevant_document, tavily_search]
+
+    coordinator:
+      tools: [handoff_to_other_agent]
+
+    deep_research:
+      tools: [tavily_search, retrieve_relevant_image, retrieve_relevant_video]
+
+  mm_mas:
+    learner:
+      config:
+        prompts_dir: "src/agents/mm_mas/prompt"
+        max_components: 5 # Increased to allow for more granular components
+        section_mas: ["flashcard_agent", "experiment_agent"]
+      retry:
+        max_retries: 3
+        base_delay_sec: 1.5
+      agents:
+        # This is the top-level supervisor that plans the entire lesson into sections
+        - agent_name: lesson_supervisor 
+          tools: [handoff_to_other_agent]
+          model:
+            model_provider: google_genai
+            model: gemini-2.5-pro
+            api_key: ${GOOGLE_API_KEY}
+            temperature: 0.2
+
+        # This is the supervisor for a single section, orchestrating multi-modal generation
+        - agent_name: section_supervisor
+          model:
+            model_provider: google_genai
+            model: gemini-2.5-pro
+            api_key: ${GOOGLE_API_KEY}
+            temperature: 0.4
+          # The section_supervisor itself doesn't use tools directly, it delegates
+          tools: [] 
+
+        # Worker agents for the section_supervisor
+        # - agent_name: ppt_agent
+        #   tools: [generate_ppt]
+        #   model:
+        #     model_provider: google_genai
+        #     model: gemini-2.5-pro
+        #     api_key: ${GOOGLE_API_KEY}
+        #     temperature: 0.7
+        - agent_name: flashcard_agent
+          tools: [generate_flashcard]
+          model:
+            model_provider: google_genai
+            model: gemini-2.5-pro
+            api_key: ${GOOGLE_API_KEY}
+            temperature: 0.7
+        - agent_name: experiment_agent
+          tools: [generate_experiment]
+          model:
+            model_provider: google_genai
+            model: gemini-2.5-pro
+            api_key: ${GOOGLE_API_KEY}
+            temperature: 0.7
+        # - agent_name: image_agent
+        #   tools: [generate_image]
+        #   model:
+        #     model_provider: google_genai
+        #     model: gemini-2.5-pro
+        #     api_key: ${GOOGLE_API_KEY}
+        #     temperature: 0.7 
+      

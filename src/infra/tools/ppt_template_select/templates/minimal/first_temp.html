@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高中教学PPT模板 - 上下分割强化版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* 主体样式 */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f4f9;
+            font-family: 'Noto Sans SC', sans-serif;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        /* PPT容器 */
+        .ppt-container {
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 16 / 9;
+            box-shadow: 0 25px 60px -12px rgba(47, 79, 117, 0.25);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* 幻灯片本身 */
+        .slide {
+            width: 1280px;
+            height: 720px;
+            background-color: #ffffff; /* 下半部分为纯白色 */
+            position: relative;
+            transform-origin: top left;
+            overflow: hidden; 
+        }
+        
+        /* ---  上半部分装饰区域 --- */
+        
+        .deco-top-section {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 420px; /* 显著增加高度，使其成为主导 */
+            background: linear-gradient(135deg, #f5faff 0%, #eef2f9 100%);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        /* 1. 背景中的巨大、柔和光晕 */
+        .deco-top-section .background-glow {
+            position: absolute;
+            width: 1200px;
+            height: 1200px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(165, 180, 252, 0.3) 0%, rgba(199, 210, 254, 0) 55%);
+        }
+
+        /* 2. 左侧的装饰元素集群 */
+        .deco-cluster-left {
+            position: absolute;
+            top: 80px;
+            left: 80px;
+        }
+        .deco-cluster-left .circle {
+            position: absolute;
+            border-radius: 50%;
+        }
+        .deco-cluster-left .c1 {
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(224, 231, 255, 1);
+        }
+        .deco-cluster-left .c2 {
+            width: 100px;
+            height: 100px;
+            top: 120px;
+            left: 150px;
+            border: 2px solid #c7d2fe;
+        }
+        .deco-cluster-left .c3 {
+            width: 40px;
+            height: 40px;
+            top: 100px;
+            left: 80px;
+            background: #a5b4fc;
+        }
+
+        /* 3. 右侧的装饰元素集群 */
+        .deco-cluster-right {
+            position: absolute;
+            top: 100px;
+            right: -50px;
+            width: 400px;
+            height: 300px;
+            transform: rotate(20deg);
+        }
+        .deco-cluster-right .line {
+            position: absolute;
+            background: #dbeafe;
+            height: 2px;
+            border-radius: 1px;
+        }
+        .deco-cluster-right .l1 { width: 100%; top: 0; }
+        .deco-cluster-right .l2 { width: 80%; top: 40px; }
+        .deco-cluster-right .l3 { width: 90%; top: 80px; }
+        .deco-cluster-right .l4 {
+            width: 2px;
+            height: 150%;
+            left: 50%;
+            top: -25%;
+            background: #bfdbfe;
+        }
+
+        /* 4. 分割线，用于柔和地过渡到白色区域 */
+        .deco-divider {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px; /* 增加过渡区域的高度 */
+            background: linear-gradient(to top, rgba(255, 255, 255, 1) 20%, rgba(255, 255, 255, 0));
+            z-index: 2;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="ppt-container">
+        <!-- 单个幻灯片模板 -->
+        <div class="slide">
+            
+            <!-- 上半部分装饰区 -->
+            <div class="deco-top-section">
+                <!-- 背景光晕 -->
+                <div class="background-glow"></div>
+                
+                <!-- 左侧元素 -->
+                <div class="deco-cluster-left">
+                    <div class="circle c1"></div>
+                    <div class="circle c2"></div>
+                    <div class="circle c3"></div>
+                </div>
+
+                <!-- 右侧元素 -->
+                <div class="deco-cluster-right">
+                    <div class="line l1"></div>
+                    <div class="line l2"></div>
+                    <div class="line l3"></div>
+                    <div class="line l4"></div>
+                </div>
+
+                <!-- 过渡分割线 -->
+                <div class="deco-divider"></div>
+            </div>
+
+            <!--
+                内容区域:
+                下方的纯白区域 (从 y=420px 左右开始) 是您的主内容画板。
+                您可以使用绝对定位或Flexbox/Grid容器在此区域动态添加和布局AI生成的内容。
+                例如:
+                <div class="absolute top-[480px] left-20 w-11/12">
+                    <h1 class="text-6xl font-bold text-slate-800">[PPT主标题]</h1>
+                    <h2 class="mt-4 text-2xl text-slate-500">[副标题或授课人]</h2>
+                </div>
+            -->
+        </div>
+    </div>
+
+    <script>
+        // JS用于动态缩放幻灯片以适应容器大小
+        function scaleSlide() {
+            const container = document.querySelector('.ppt-container');
+            const slide = document.querySelector('.slide');
+            if (!container || !slide) return;
+            
+            const containerWidth = container.offsetWidth;
+            const scale = containerWidth / 1280;
+            
+            slide.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('load', scaleSlide);
+        window.addEventListener('resize', scaleSlide);
+    </script>
+</body>
+</html>

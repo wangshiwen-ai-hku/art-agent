@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高中教学PPT模板 - 顶部装饰版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* 主体样式，用于将PPT容器在屏幕中居中展示 */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f4f9;
+            font-family: 'Noto Sans SC', sans-serif;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        /* PPT容器，用于保持16:9的比例并居中 */
+        .ppt-container {
+            width: 100%;
+            max-width: 1280px;
+            aspect-ratio: 16 / 9;
+            box-shadow: 0 25px 60px -12px rgba(47, 79, 117, 0.25);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* 幻灯片本身，固定1280x720尺寸 */
+        .slide {
+            width: 1280px;
+            min-height: 720px;
+            background-color: #ffffff; /* 核心区域为纯白色 */
+            position: relative;
+            transform-origin: top left;
+            overflow: hidden; 
+        }
+        
+        /* ---  顶部装饰页头 --- */
+        
+        .deco-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 72px; /* 保持加厚的页头区域 */
+            background-color: #f8fafc; /* 使用浅灰色作为基础背景 */
+            border-bottom: 1px solid #e2e8f0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+        }
+
+        /* 页头内部的装饰性渐变条 */
+        .header-gradient-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #6366f1 0%, #a855f7 100%);
+        }
+
+        /* 页头左侧的几何形状组合 */
+        .header-geo-cluster-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .geo-shape {
+            border-radius: 4px;
+        }
+        .geo-shape-1 {
+            width: 32px;
+            height: 32px;
+            background-color: #c7d2fe;
+        }
+        .geo-shape-2 {
+            width: 16px;
+            height: 16px;
+            background-color: #a5b4fc;
+        }
+        .geo-shape-3 {
+            width: 16px;
+            height: 16px;
+            background-color: #e0e7ff;
+        }
+
+        /* 页头右侧的装饰线条 */
+        .header-lines-right {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-left: auto; /* 将其推到最右边 */
+        }
+        .line {
+            height: 2px;
+            background-color: #e2e8f0;
+            border-radius: 1px;
+        }
+        .line-1 { width: 120px; }
+        .line-2 { width: 80px; }
+        .line-3 { width: 100px; }
+
+        
+        /* 右侧的细节点缀线条 */
+        .deco-right-lines {
+            position: absolute;
+            right: 40px;
+            top: 120px; /* 向下移动以避开页头 */
+            height: 150px;
+            width: 1px;
+            background-color: #e2e8f0;
+        }
+        .deco-right-lines::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 20px;
+            height: 100px;
+            width: 1px;
+            background-color: #e2e8f0;
+        }
+
+        /* 右下角的精致SVG几何角标 */
+        .deco-corner-svg {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            z-index: 10;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="ppt-container">
+        <!-- 单个幻灯片模板 -->
+        <div class="slide">
+            
+            <!-- 顶部装饰页头 -->
+            <div class="deco-header">
+                <div class="header-gradient-bar"></div>
+                <div class="header-geo-cluster-left">
+                    <div class="geo-shape geo-shape-1"></div>
+                    <div class="geo-shape geo-shape-2"></div>
+                    <div class="geo-shape geo-shape-3"></div>
+                </div>
+                <div class="header-lines-right">
+                    <div class="line line-1"></div>
+                    <div class="line line-2"></div>
+                    <div class="line line-3"></div>
+                </div>
+            </div>
+
+            <!-- 右侧装饰 -->
+            <div class="deco-right-lines"></div>
+            <div class="deco-corner-svg">
+                <svg width="100%" height="100%" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M100 0V100H0" stroke="#E0E7FF" stroke-width="2"/>
+                    <path d="M80 20V80H20" stroke="#C7D2FE" stroke-width="2"/>
+                    <path d="M60 40V60H40" stroke="#A5B4FC" stroke-width="2"/>
+                </svg>
+            </div>
+
+            <!--
+                内容区域:
+                此处的白色区域 (从 y=72px 开始) 是您的主内容画板。
+                您可以使用绝对定位或Flexbox/Grid容器在此区域动态添加和布局AI生成的内容。
+                例如:
+                <div class="absolute top-96 left-40 w-1/2">
+                    <h1 class="text-4xl font-bold text-slate-800">这是幻灯片标题</h1>
+                    <p class="mt-4 text-xl text-slate-600">这是段落内容...</p>
+                </div>
+            -->
+        </div>
+    </div>
+
+    <script>
+        let currentZoom = 100;
+        
+        // 设置缩放比例
+        function setZoom(zoomPercent) {
+            currentZoom = zoomPercent;
+            
+            // 使用CSS zoom属性实现浏览器级别缩放
+            if (document.body.style.zoom !== undefined) {
+                document.body.style.zoom = (zoomPercent / 100) + '';
+            } else {
+                // 兼容性fallback
+                document.body.style.transform = `scale(${zoomPercent / 100})`;
+                document.body.style.transformOrigin = 'top left';
+            }
+        }
+        
+        // 自动适配屏幕尺寸
+        function autoFitZoom() {
+            const container = document.querySelector('.ppt-container');
+            const screenWidth = window.innerWidth - 40;
+            const screenHeight = window.innerHeight - 40;
+            
+            const containerWidth = 1280;
+            const containerHeight = container.offsetHeight;
+            
+            // 计算适配比例，取最小值确保完全适配
+            const scaleX = (screenWidth / containerWidth) * 100;
+            const scaleY = (screenHeight / containerHeight) * 100;
+            const autoZoom = Math.min(scaleX, scaleY, 100);
+            
+            setZoom(Math.round(autoZoom));
+        }
+        
+        // 禁用浏览器默认的缩放行为，只保留自动适配
+        document.addEventListener('wheel', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault(); // 阻止默认缩放行为
+            }
+        });
+        
+        // 禁用键盘缩放快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '=' || e.key === '-' || e.key === '0') {
+                    e.preventDefault(); // 阻止默认缩放行为
+                }
+            }
+        });
+        
+        // 确保居中功能
+        function ensureCenter() {
+            const container = document.querySelector('.ppt-container');
+            if (container) {
+                // 使用CSS确保容器水平居中
+                container.style.marginLeft = 'auto';
+                container.style.marginRight = 'auto';
+                container.style.display = 'block';
+                
+                // 对于缩放后的垂直居中
+                const body = document.body;
+                body.style.display = 'flex';
+                body.style.justifyContent = 'center';
+                body.style.alignItems = 'center';
+            }
+        }
+        
+        // 窗口大小变化时自动重新适配并确保居中
+        window.addEventListener('resize', function() {
+            autoFitZoom();
+            ensureCenter();
+        });
+        
+        // 页面加载完成后自动适配并居中
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                autoFitZoom();
+                ensureCenter();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

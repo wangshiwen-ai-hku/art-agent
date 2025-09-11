@@ -205,3 +205,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+
+# Test files
+*test.py
+
+# Deprecated files
+deprecated*
+
+checkpoint*
+# macOS files
+.DS_Store
+
+Dockerfile
+uv.lock

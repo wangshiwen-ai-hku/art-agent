@@ -1,0 +1,30 @@
+# psycopg2-binary 
+# sqlalchemy 
+# pgvector
+# dashscope
+# fastapi
+# uvicorn
+# websockets
+# pyaudio
+# openai
+# pydub
+# dotenv
+# # 异步任务
+# celery
+# redis
+# apscheduler
+# python-multipart
+# volcengine-python-sdk
+
+# for llm
+
+langchain
+langgraph
+langchain-core
+langchain-openai
+langchain-google-genai
+# langchain-supervisor
+langchain-community
+langchain_mcp_adapters
+langgraph-checkpoint-sqlite
+tavily-python
