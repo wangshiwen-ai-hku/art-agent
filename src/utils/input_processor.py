@@ -407,49 +407,106 @@ def create_multimodal_message(
 from typing import List, Union
 from google.genai.types import Part   # 需要 google-genai>=1.0
 
+from typing import List, Union, Optional
+from google.genai.types import Part
+import base64
+
 def create_vertex_multimodal_message(
-    text: Optional[str] = None,
+    text: str,
     image_data: Optional[List[str]] = None,
-    image_url: Optional[List[str]] = None,
-    audio_url: Optional[str] = None,
 ) -> List[Union[str, Part]]:
     """
     专为 Vertex AI (google-genai SDK) 准备的多模态输入函数。
-    参数语义与 create_multimodal_message 完全一致，但返回的是
-    contents 列表，可直接传给
+    用法：
+        text = "开头{image}中间{image}结尾"
+        image_data = [b64_1, b64_2]
+        contents = create_vertex_multimodal_message(text, image_data)
         client.models.generate_content(model="gemini-2.0-flash", contents=contents)
     """
     global _processor
     if _processor is None:
         _processor = MultimodalInputProcessor()
 
+    if image_data is None:
+        image_data = []
+
+    # 按 {image} 切分，保留空串
+    text_parts = text.split("image")
+    img_cnt = len(image_data)
+    placeholder_cnt = len(text_parts) - 1
+
+    # if placeholder_cnt >= img_cnt:
+    #     raise ValueError(
+    #         f"text 中 {{image}} 占位符数量 ({placeholder_cnt}) "
+    #         f"与 image_data 长度 ({img_cnt}) 不一致"
+    #     )
+
     contents: List[Union[str, Part]] = []
 
-    # 1. 处理文本（含音频转写）
-    if audio_url:
-        transcribed = _processor._convert_audio_to_text(audio_url)
-        text = (text or "") + f"\n\n<上传音频的文字转录内容>\n{transcribed}\n</上传音频的文字转录内容>"
-    if text:
-        contents.append(text)
-
-    # 2. 处理 base64 图片
-    if image_data:
-        for b64 in image_data:
-            mime = _processor._detect_image_mime_type(base64.b64decode(b64))
+    for idx, txt in enumerate(text_parts):
+        # 1. 先放文字（可能为空）
+        if txt:                       # 跳过空串，避免多余 text 节点
+            contents.append(txt)
+        try:
+            img = image_data.pop(0)
+        except IndexError:
+            img = None
+            
+        if img:
+            mime = _processor._detect_image_mime_type(img)
             if mime not in _processor.SUPPORTED_IMAGE_TYPES:
                 raise ValueError(f"Unsupported image format: {mime}")
-            contents.append(Part.from_bytes(data=b64, mime_type=mime))
-
-    # 3. 处理图片 URL（Vertex 同样支持 http/https）
-    if image_url:
-        for url in image_url:
-            # 复用原逻辑做可达性与格式校验
-            block = _processor._process_image_url(url)   # 返回 {"type":"image_url", "image_url":{"url":url}}
-            contents.append(Part.from_uri(file_uri=block["image_url"]["url"], mime_type="image/jpeg"))
+            contents.append(Part.from_bytes(data=img, mime_type=mime))
+        if idx == placeholder_cnt and len(image_data) > 0:
+            # 多余的image直接都放在最后
+            for img in image_data:
+                # raw = base64.b64decode(img)
+                mime = _processor._detect_image_mime_type(img)
+                if mime not in _processor.SUPPORTED_IMAGE_TYPES:
+                    raise ValueError(f"Unsupported image format: {mime}")
+                contents.append(Part.from_bytes(data=img, mime_type=mime))
 
     if not contents:
         raise ValueError("No text or media provided")
 
     return contents
 
+from typing import Optional
+from io import BytesIO
+from PIL import Image
+from google.genai.types import Image as GImage, RawReferenceImage
 
+def bytes_to_raw_reference_image(
+    image_bytes: bytes,
+    reference_id: int = 0,
+    format: str = "JPEG",          # 或 "PNG"
+    quality: int = 95,
+) -> RawReferenceImage:
+    """
+    把原始图片字节流包装成 RawReferenceImage，供 edit_image 使用。
+    
+    参数
+    ----
+    image_bytes : bytes
+        原始图片字节（jpg/png/...）
+    reference_id : int, optional
+        引用编号，默认 0
+    format : str, optional
+        重新编码的格式，默认 "JPEG"
+    quality : int, optional
+        JPEG 质量，默认 95（仅对 JPEG 生效）
+    
+    返回
+    ----
+    RawReferenceImage
+        可直接塞进 reference_images=[...]
+    """
+    # 1. 解码→编码，确保字节流干净且带正确文件头
+    with Image.open(BytesIO(image_bytes)) as pil_img:
+        out = BytesIO()
+        pil_img.save(out, format=format, quality=quality)
+        clean_bytes = out.getvalue()
+
+    # 2. 构造 SDK 所需对象
+    g_img = GImage(image_bytes=clean_bytes)
+    return RawReferenceImage(reference_image=g_img, reference_id=reference_id)

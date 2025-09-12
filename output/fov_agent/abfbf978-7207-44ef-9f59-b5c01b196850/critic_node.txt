@@ -1,0 +1,12 @@
+Logo editing prompt, negative space, figure-ground reversal, minimalist, vector art, black and white. Drastically simplify the entire composition into a pure black and white design, removing all gradients, shadows, highlights, and the intermediate taupe/gray colors. The image must be composed of only a solid black shape and the surrounding pure white background. Eliminate the decorative star elements.
+
+The core instruction is to achieve a true 'yin-yang' or figure-ground reversal where the two forms create each other. The white dove must not be a separate shape placed on top of another; it must BE the negative space.
+
+1.  **Reconstruct the central form**: The black bomb and the white dove must share a single, continuous, S-curved contour line that divides the composition, similar to a yin-yang symbol. The large, light-gray crescent shape must be completely removed.
+2.  **Define the Dove from Negative Space**: The solid black shape is the bomb. The pure white area to its right must be reshaped to form the complete and recognizable silhouette of a dove flying upwards.
+3.  **Correct the Contour Interaction**:
+    *   The right-side edge of the black bomb's casing must be reshaped into a smooth curve that simultaneously defines the breast and neck of the white dove.
+    *   The sharp, downward-pointing tip of the bomb must be adjusted so it perfectly *becomes* the beak of the upward-flying dove. This is a single, shared point.
+    *   The fins at the top of the black bomb must be redesigned so their outlines and the white space between them seamlessly form the fanned-out tail feathers of the white dove. The dove's wing should be formed by the white space extending out from its body.
+
+The final image must be a single, cohesive, and balanced graphic where the black bomb and the white dove are perfectly interlocked and inseparable, each defining the other along their shared boundary. High contrast, clean lines, no extraneous elements.

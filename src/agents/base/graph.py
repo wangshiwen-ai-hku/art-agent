@@ -52,7 +52,7 @@ class BaseAgent(ABC):
         self._context = None
 
         logger.info(f"Loaded tools: {[tool.name for tool in self._tools]}")
-        logger.info(f"Loaded system prompt: {self._system_prompt}")
+        # logger.info(f"Loaded system prompt: {self._system_prompt}")
         self._init_llm()
         
         if self._tools:

@@ -1,0 +1,15 @@
+logo design, minimalist, vector art, flat icon, black and white, high contrast, centered, isolated on a white background.
+
+**Edit Instructions:**
+
+1.  **Remove all text, annotations, and extraneous elements** from the image. The final output must be only the circular logo, completely isolated on a pure white background.
+
+2.  **Correct the core design flaw:** The current image incorrectly places separate illustrations of mountains and a ravine inside the black and white sections. This must be changed to a true "yin-yang interchange" where a single line creates both forms.
+
+3.  **Redefine the dividing line:** Completely remove the smooth 'S' curve and the separate illustrations. Replace it with a **single, shared, continuous contour line** that runs diagonally through the circle.
+
+4.  **Define the Positive Space (Black):** The upper-left shape must be **solid black**. Its lower boundary is the new shared contour line, which must be shaped as a **sharp, jagged, angular silhouette of a mountain range**. There should be NO white details (like snow) inside this black shape.
+
+5.  **Define the Negative Space (White):** The lower-right shape must be **pure white**. Its upper boundary is the **exact same jagged contour line** from the black shape. This line now represents the winding, steep edge of a canyon or ravine. There should be NO black illustration of a river inside this white space.
+
+The final logo should be a perfect circle cleanly divided into two interlocking shapes: a solid black mountain form and a pure white ravine form, both created by one and the same shared boundary line.
