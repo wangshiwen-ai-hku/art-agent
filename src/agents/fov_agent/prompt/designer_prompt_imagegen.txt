@@ -1,27 +1,38 @@
 
-下面请根据用户的**设计主题 (topic)**和**设计要求 (requirement)**，遵循一个严谨的内部思维链，最终生成一段详细的**全英文的**图片生成提示词。
+下面请根据用户的**设计主题 (topic)**和**设计要求 (requirement)**生成详细的**全英文的**图片生成提示词，**直接**供下游图像生成模型使用。
 
-**内部思维链 (Internal Thought Process)**
-在生成最终的英文提示词之前，你必须先在内部完成以下思考步骤：
-
-1.  **核心轮廓分析**: 解构正形和负形两个物象。分别找出它们最关键的、**不可或缺的**识别性轮廓。
-    *   *思维示例: 物象为字母'D'和'狗'。'D'的核心轮廓是其笔直的垂直背线和外侧的半圆弧线。'狗'的核心轮廓是其头部的侧面剪影。*
-
-2.  **轮廓融合构思 (关键步骤)**: 构思如何让两个物象的**核心轮廓**进行融合或替换，以**最大化共享边界**。这是设计的核心，目标是找到最优雅、最巧妙的结合点。
-    *   *错误构思示例: 在'D'的内部挖出一个狗的形状。这没有共享边界，且破坏了'D'的完整性。*
-    *   *正确构思示例: 将'D'的笔直垂直背线作为狗的后颈和背部轮廓。这样，狗的头部侧脸剪影就自然构成了'D'的内部负空间。*
-
-3.  **完整性保留检查**: 严格审视你的构思。在这个设计中，两个物象是否都**清晰可辨**？一个物象的识别度是否因为另一个的出现而被过度牺牲？如果答案是肯定的，返回第2步，寻找更好的融合方式。
-
-4.  **生成最终提示词**: 只有在通过完整性检查后，才能将这个经过深思熟虑的、和谐的设计构思，提炼并转化为一段**连续的、纯粹视觉化的、不包含任何思维过程的**英文描述文本。
-
----
-
-**最终输出要求**
+**要求**
 1. (十分重要) **生成纯提示词**: 只对生图模型进行提示，你需要生成符合其输入的纯图像内容描述提示词，包括空间和颜色。
-2. **精心描述内容与形态完整性**: 分别描述正形和负形的详细外形、轮廓、颜色、边界信息。**(关键要求)** 两者必须都是**语义完整**的图形，能被独立识别。**并着重描述**它们之间共享轮廓的交互逻辑，这条边界线如何同时勾勒出两个不同的、完整的物体。
-3. **抽象化与轮廓设计 (关键)**: 产出物必须是高度抽象和风格化的**平面图标 (flat icon)**，而非写实图像。设计应完全由二维的点、线、面和轮廓构成。禁止任何模仿三维、光影或真实生物纹理的元素。**共享轮廓线的艺术性**: 这条边界线本身必须具有美感和设计感，它应该是一条流畅、优雅、有意义的曲线或折线，能天衣无缝地融合两个图形，如同“字母a中的猫”一样和谐自然。
-4. (十分重要) **杜绝文字海报**: 生成的提示词**必须**引导模型生成**不含任何文字**的 logo 或 icon。避免使用如 'concept', 'description', 'element type', 'based on the concept of' 等任何可能被误解为图像中文字内容的词语。请用纯粹的视觉描述语言。
-5. **格式要求**: 生成的提示词应为一段**连续的文本**，用逗号分隔不同的描述。开头先用一连串的关键词来确定图像风格和基本元素。
+2. **运用专业技巧**: 请你详细学习*设计技巧*一节，理解并掌握不同技巧的用处。进行设计技巧的选择。
+3. **精心描述内容与形态完整性**: 分别描述正形和负形的详细外形、轮廓、颜色、边界信息。**(关键要求)** 两者必须都是**语义完整**的图形，能被独立识别。**并着重描述**它们之间共享轮廓的交互逻辑，这条边界线如何同时勾勒出两个不同的、完整的物体。
+4. **抽象化与轮廓设计 (关键)**: 产出物必须是高度抽象和风格化的**平面图标 (flat icon)**，而非写实图像。设计应完全由二维的点、线、面和轮廓构成。禁止任何模仿三维、光影或真实生物纹理的元素。**共享轮廓线的艺术性**: 这条边界线本身必须具有美感和设计感，它应该是一条流畅、优雅、有意义的曲线或折线，能天衣无缝地融合两个图形，如同“字母a中的猫”一样和谐自然。
+5. (十分重要) **杜绝文字海报**: 生成的提示词**必须**引导模型生成**不含任何文字**的 logo 或 icon。避免使用如 'concept', 'description', 'element type', 'based on the concept of' 等任何可能被误解为图像中文字内容的词语。请用纯粹的视觉描述语言。
+6. **格式要求**: 生成的提示词应为一段**连续的文本**，用逗号分隔不同的描述。开头先用一连串的关键词来确定图像风格和基本元素。
+
+**用户提供的设计案例**
+image
+
+---------------------------
+
+**好的例子 (Good Example):**
+Logo design, negative space, minimalist, flat icon, vector art, black and white. A solid black shape of a dog as the positive form (正形). The dog's silhouette, primarily its head and chest, is positioned facing to the right. Within the negative space created by the dog's form, a white silhouette of a cat is revealed as the negative form (负形). The interaction of the boundaries is critical: the inner contour of the dog's chin, neck, and chest area is a shared line, which simultaneously and perfectly creates the outer contour of the cat's head, pointed ears, and curved back. The white cat is nestled snugly under the dog's chin, looking towards the left. The entire design is a single, cohesive shape, representing friendship and care. Isolated on a pure white background, high contrast, clean, solid shapes, no gradients or textures.
+
+**坏的例子 (Bad Example):**
+logo design, minimalist, vector art, flat icon, black and white, high contrast, centered, isolated on a white background.
+
+A graphic logo based on the concept of "mountains and ravines" using the yin-yang interchange positive and negative space technique.
+
+The entire design is contained within a perfect circle. The circle is split into two perfectly interlocking shapes by a single, dynamic, S-curved line that runs diagonally through the center.
+
+The top-left shape, the positive space, is solid black. It represents a mountain range. Its shared boundary with the white space is a stylized, sharp, jagged line, evoking the silhouette of mountain peaks.
+
+The bottom-right shape, the negative space, is pure white. It represents a deep, winding ravine or canyon. Its shared boundary is the exact same jagged line, which now defines the steep, twisting edge of the ravine.
+
+The black mountain shape and the white ravine shape are mutual and complementary, one cannot exist without the other, sharing the same contour line. Clean, bold, graphic, no grey tones.
+
+**坏例子的分析**: 这个例子使用了 "based on the concept of" 这样的描述性短语，并且分段，这很容易让图像生成模型误解并生成带有文字的海报。请避免这种风格。
+
+
+请使用**英文**生成提示词。
 
 
