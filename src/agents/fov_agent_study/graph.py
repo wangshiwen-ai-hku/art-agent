@@ -324,8 +324,8 @@ def draw_image_tool(prompt: str, aspect_ratio: str):
             aspect_ratio=aspect_ratio,
             number_of_images=1,
             image_size="1K",
-            safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
-            person_generation="ALLOW_ADULT",
+            # safety_filter_level="BLOCK_MEDIUM_AND_ABOVE",
+            # person_generation="ALLOW_ADULT",
         ),
     )
     
