@@ -4,6 +4,8 @@
 
 ## 环境搭建
 
+例子
+
 ```bash
 conda create -n agent python=3.12 # >=3.11
 pip install -r requirements.txt
