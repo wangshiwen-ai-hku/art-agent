@@ -476,6 +476,23 @@ from io import BytesIO
 from PIL import Image
 from google.genai.types import Image as GImage, RawReferenceImage
 
+def process_image_bytes(image_path: list) -> List[bytes]:
+        """
+        read the path/str/ list of path of images to bytes
+        """        
+        if isinstance(image_path, str):
+            image_path = [image_path]
+        img_bytes_list = []
+        for image in image_path:
+            if isinstance(image, str):
+                image = Path(image)
+                img_bytes_list.append(image.read_bytes())
+            elif isinstance(image, Path):
+                img_bytes_list.append(image.read_bytes())
+            else:
+                raise ValueError(f"Unsupported image format: {type(image)}")
+        return img_bytes_list
+
 def bytes_to_raw_reference_image(
     image_bytes: bytes,
     reference_id: int = 0,

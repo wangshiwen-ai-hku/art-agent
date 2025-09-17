@@ -5,7 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
+output/
 
+open-canvas
 # Distribution / packaging
 .Python
 build/

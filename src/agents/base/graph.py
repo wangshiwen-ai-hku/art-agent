@@ -63,7 +63,7 @@ class BaseAgent(ABC):
 
         self.compiled_graph = self.compile_graph()  # entry_point
         
-    @abstractmethod
+    # @abstractmethod
     def _init_llm(self):
         self._llm = init_chat_model(**asdict(self._model_config))
         
