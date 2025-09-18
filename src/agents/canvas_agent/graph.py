@@ -4,7 +4,7 @@ for agents that need interactive conversation capabilities.
 """
 
 import logging
-from typing import List
+from typing import List, Literal, Tuple
 import json
 import os
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
@@ -15,8 +15,9 @@ from src.agents.base import BaseAgent
 from .schema import CanvasState, SketchDraft, SketchOutput
 from src.config.manager import AgentConfig
 from pydantic import BaseModel
+import re
 
-from src.infra.tools import canvas_tools
+from src.infra.tools.math_tools import calculator
 
 try:
     import cairosvg
@@ -30,8 +31,7 @@ class SketchImaginary(BaseModel):
     """A model for parsing the output of the imaginer LLM call."""
     sketch_imaginary: List[SketchDraft]
     design_analysis: str
-
-
+    
 class CanvasAgent(BaseAgent):
     """
     An agent that generates design sketches as SVG images.
@@ -47,18 +47,51 @@ class CanvasAgent(BaseAgent):
         super().__init__(agent_config)
         self._load_system_prompt()
         self.config = agent_config
+        self.load_math_llm()
         
-        # Create a fully-fledged agent that can manage the tool-calling loop internally.
-        # This agent will use the "drawer" system prompt as its instructions.
-        system_prompt = self._system_prompts["drawer"]
-        self.drawer_agent = create_react_agent(model=self._llm, tools=self._tools, prompt=system_prompt)
+        # The Drawer Agent: Executes drawing instructions
+        drawer_system_prompt = self._system_prompts["drawer"]
+        self.drawer_agent = create_react_agent(model=self._llm, tools=self._tools, prompt=drawer_system_prompt)
 
+        # The Planner Agent: Designs the logo using mathematical tools
+        planner_system_prompt = self._system_prompts["sketch_planner"]
+        planner_tools = [calculator]
+        self.planner_agent = create_react_agent(model=self._math_llm, tools=planner_tools + self._tools, prompt=planner_system_prompt)
+
+    def load_math_llm(self):
+        self._math_llm = self._init_llm()
 
     def _load_system_prompt(self):
-        """Load the system prompts for the agent's nodes."""
+        """Loads system prompts and prepares SVG examples."""
+        
+        def _extract_svg_path(file_name: str) -> str:
+            """Reads an SVG file and extracts the path data from the 'd' attribute."""
+            try:
+                file_path = os.path.join(os.path.dirname(__file__), "examples", file_name)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                match = re.search(r'<path[^>]*d="([^"]+)"', content)
+                if match:
+                    return f'd="{match.group(1)}"'
+                return "Path data not found."
+            except FileNotFoundError:
+                logger.error(f"Example SVG file not found: {file_name}")
+                return f"[Could not load example: {file_name}]"
+            except Exception as e:
+                logger.error(f"Error processing SVG file {file_name}: {e}")
+                return "[Error loading example]"
+
+        # Load example paths into instance variables
+        self.github_path_example = _extract_svg_path("github-svgrepo-com.svg")
+        self.starbucks_path_example = _extract_svg_path("starbucks-svgrepo-com.svg")
+        self.jtb_path_example = _extract_svg_path("jtbmd-svgrepo-com.svg")
+
+        # Load prompts
         self._system_prompts = {
             "imaginer": open(os.path.join(os.path.dirname(__file__), "prompt/imaginer_prompt.txt"), "r", encoding="utf-8").read(),
             "drawer": open(os.path.join(os.path.dirname(__file__), "prompt/drawer_prompt.txt"), "r", encoding="utf-8").read(),
+            "sketch_refiner_input": open(os.path.join(os.path.dirname(__file__), "prompt/sketch_refiner_prompt.txt"), "r", encoding="utf-8").read(),
+            "sketch_planner": open(os.path.join(os.path.dirname(__file__), "prompt/sketch_planner_prompt.txt"), "r", encoding="utf-8").read(),
         }
 
     def get_structure_llm(self, schema: BaseModel):
@@ -91,6 +124,40 @@ class CanvasAgent(BaseAgent):
 
         return {"sketch_ideas": sketch_ideas}
 
+    async def refine_sketch_node(self, state: CanvasState, config=None):
+        """Uses a planning agent with a calculator to generate a detailed drawing prompt."""
+        logger.info("---CANVAS AGENT: PLANNER NODE---")
+        
+        refiner_input_template = self._system_prompts["sketch_refiner_input"]
+        
+        sketch_ideas = state['sketch_ideas']
+        
+        for idea in sketch_ideas:
+            logger.info(f"-> Planning sketch with math: {idea.design_description}")
+            
+            # This is the input to the planner, containing examples and the specific request
+            planner_input = refiner_input_template.format(
+                sketch_description=idea.sketch_description,
+                # github_path=self.github_path_example,
+                # starbuck_path=self.starbucks_path_example,
+                # jtb_path=self.jtb_path_example
+            ) + self._system_prompts["sketch_planner"]
+            
+            messages = [HumanMessage(content=planner_input)]
+            agent_input = {"messages": messages}
+            
+            # Invoke the planner agent. It will use the calculator to think.
+            final_state = await self.planner_agent.ainvoke(agent_input)
+
+            # The final answer from the planner is the drawing prompt for the next agent.
+            drawing_prompt = final_state['messages'][-1].content
+            
+            idea.drawing_prompt = drawing_prompt
+            logger.info(f"-> Generated Drawing Prompt: {idea.drawing_prompt}")
+
+        return {"sketch_ideas": sketch_ideas}
+
+
     async def draw_sketches_node(self, state: CanvasState, config=None):
         """Uses the drawer agent to execute the drawing prompts for each idea."""
         logger.info("---CANVAS AGENT: DRAWER NODE---")
@@ -100,8 +167,11 @@ class CanvasAgent(BaseAgent):
         for i, idea in enumerate(state['sketch_ideas']):
             logger.info(f"-> Drawing sketch {i+1}...")
             
-            prompt = idea.drawing_prompt
-            messages = [HumanMessage(content=prompt)]
+            if not idea.drawing_prompt:
+                logger.warning(f"-> Skipping sketch {i+1} as it has no drawing prompt.")
+                continue
+
+            messages = [HumanMessage(content=idea.drawing_prompt)]
             
             # The create_react_agent expects a dictionary with a "messages" key.
             agent_input = {"messages": messages}
@@ -117,28 +187,27 @@ class CanvasAgent(BaseAgent):
             ]
 
             # Assemble the final SVG
-            final_svg = f'<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">{"".join(svg_elements)}</svg>'
+            final_svg = f'<svg width="1000" height="1000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">{"".join(svg_elements)}</svg>'
             
             # Save the SVG file and convert to PNG
             if state.get('project_dir'):
                 svg_path = os.path.join(state['project_dir'], f"sketch_{i}.svg")
-                jpg_path = os.path.join(state['project_dir'], f"sketch_{i}.png")
+                png_path = os.path.join(state['project_dir'], f"sketch_{i}.png")
                 with open(svg_path, "w", encoding="utf-8") as f:
                     f.write(final_svg)
 
                 if cairosvg:
                     try:
-                        cairosvg.svg2png(bytestring=final_svg.encode('utf-8'), write_to=jpg_path, background_color="white")
-                        logger.info(f"-> Saved JPG sketch to {jpg_path}")
+                        cairosvg.svg2png(bytestring=final_svg.encode('utf-8'), write_to=png_path, background_color="white")
+                        logger.info(f"-> Saved PNG sketch to {png_path}")
                     except Exception as e:
-                        logger.error(f"-> Failed to convert SVG to JPG for sketch {i+1}: {e}")
+                        logger.error(f"-> Failed to convert SVG to PNG for sketch {i+1}: {e}")
                 else:
-                    logger.warning("-> `cairosvg` is not installed. Skipping JPG conversion. To install, run: pip install cairosvg")
+                    logger.warning("-> `cairosvg` is not installed. Skipping PNG conversion. To install, run: pip install cairosvg")
             
             sketches.append({
                 "idea": idea,
                 "svg_elements": svg_elements,
-                "final_svg": final_svg
             })
 
         return {"sketches": sketches}
@@ -147,14 +216,16 @@ class CanvasAgent(BaseAgent):
         graph = StateGraph(CanvasState)
         graph.add_node("imagine_node", self.imagine_node)
         graph.add_node("draw_sketches_node", self.draw_sketches_node)
+        graph.add_node("refine_sketch_node", self.refine_sketch_node)
 
         graph.add_edge(START, "imagine_node")
-        graph.add_edge("imagine_node", "draw_sketches_node")
+        graph.add_edge("imagine_node", "refine_sketch_node")
+        graph.add_edge("refine_sketch_node", "draw_sketches_node")
         graph.add_edge("draw_sketches_node", END)
         
         return graph
     
-
+    
 
 
     
