@@ -6,7 +6,7 @@ __pycache__/
 # C extensions
 *.so
 output/
-
+apikey.json
 open-canvas
 # Distribution / packaging
 .Python
