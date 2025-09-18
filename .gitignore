@@ -3,10 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+apikey.json
 # C extensions
 *.so
 output/
-apikey.json
 open-canvas
 # Distribution / packaging
 .Python
