@@ -14,7 +14,7 @@ load_dotenv()
 client = genai.Client(http_options=HttpOptions(api_version="v1"))
 
 
-generation_model = "imagen-3.0-generate-001"
+generation_model = "imagen-4.0-generate-001"
 edit_model = "imagen-3.0-capability-001"
 # @tool
 def generate_image_tool(prompt: str, aspect_ratio: str):

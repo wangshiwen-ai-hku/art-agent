@@ -23,4 +23,5 @@ class CanvasState(ArtistState):
     requirement: str
     sketch_ideas: List[SketchDraft]
     sketches: List[SketchOutput]
+    generated_image_paths: Optional[List[str]] = None
     

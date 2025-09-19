@@ -1,0 +1,12 @@
+Your task is to generate a single image that contains four distinct design variations for the topic: **{topic}**.
+
+The image should be presented as a 2x2 grid, with each quadrant showcasing a different concept.
+
+All designs must be:
+- Flat and two-dimensional (2D).
+- Black and white, focusing on outlines and shapes.
+- In a hand-drawn or sketch-like style.
+- Suitable for inspiring a logo design.
+
+Do not generate realistic, 3D, or colorful images. The output should be a single, unified image file.
+For example, if the topic is "the letter N", the image should show four different typographical styles of the letter 'N' in a 2x2 grid. 

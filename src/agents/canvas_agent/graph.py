@@ -7,16 +7,20 @@ import logging
 from typing import List, Literal, Tuple
 import json
 import os
+import asyncio
+import io
+import base64
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
+from PIL import Image
 
 from src.agents.base import BaseAgent
 from .schema import CanvasState, SketchDraft, SketchOutput
 from src.config.manager import AgentConfig
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import re
-
+from src.infra.tools.image_generate_edit import generate_image_tool
 from src.infra.tools.math_tools import calculator
 
 try:
@@ -31,6 +35,17 @@ class SketchImaginary(BaseModel):
     """A model for parsing the output of the imaginer LLM call."""
     sketch_imaginary: List[SketchDraft]
     design_analysis: str
+
+
+class ImagePrompt(BaseModel):
+    """A model for parsing the output of the imaginer LLM call."""
+    prompt: str = Field(description="the prompt of image generation")
+
+
+class Critique(BaseModel):
+    """A model for parsing the output of the critique LLM call."""
+    critique: str = Field(description="constructive critique of the design concept")
+
     
 class CanvasAgent(BaseAgent):
     """
@@ -92,19 +107,84 @@ class CanvasAgent(BaseAgent):
             "drawer": open(os.path.join(os.path.dirname(__file__), "prompt/drawer_prompt.txt"), "r", encoding="utf-8").read(),
             "sketch_refiner_input": open(os.path.join(os.path.dirname(__file__), "prompt/sketch_refiner_prompt.txt"), "r", encoding="utf-8").read(),
             "sketch_planner": open(os.path.join(os.path.dirname(__file__), "prompt/sketch_planner_prompt.txt"), "r", encoding="utf-8").read(),
+            "image_generator_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/image_generator_prompt.txt"), "r", encoding="utf-8").read(),
+            "critique_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/critique_prompt.txt"), "r", encoding="utf-8").read(),
+            "refine_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/refine_prompt.txt"), "r", encoding="utf-8").read(),
         }
 
     def get_structure_llm(self, schema: BaseModel):
         return self._llm.with_structured_output(schema)
 
+    async def _generate_prompt(self, state: CanvasState):
+        logger.info("---CANVAS AGENT: GENERATE PROMPT NODE---")
+        prompt_template = self._system_prompts["image_generator_prompt"]
+        prompt = prompt_template.format(topic=state['topic'])
+        messages = [HumanMessage(content=prompt)]
+        structured_llm = self.get_structure_llm(schema=ImagePrompt)
+        
+        llm_output = await structured_llm.ainvoke(messages)
+        return llm_output.prompt
+
+    async def generate_images_node(self, state: CanvasState, config=None):
+        """Generates a single composite image with four unique variations based on the topic."""
+        logger.info("---CANVAS AGENT: IMAGE GENERATOR NODE---")
+        
+        prompt = await self._generate_prompt(state)
+        image_paths = []
+        
+        try:
+            image_bytes = await asyncio.to_thread(
+                generate_image_tool,
+                prompt=prompt,
+                aspect_ratio="1:1"
+            )
+            image = Image.open(io.BytesIO(image_bytes))
+
+            if state.get('project_dir'):
+                image_path = os.path.join(state['project_dir'], "generated_image_composition.png")
+                image.save(image_path)
+                logger.info(f"-> Saved generated image to {image_path}")
+                image_paths.append(image_path)
+                
+        except Exception as e:
+            logger.error(f"-> Failed to generate or save image: {e}")
+        
+        image_paths = [path for path in image_paths if path]
+        return {"generated_image_paths": image_paths}
+        
     async def imagine_node(self, state: CanvasState, config=None):
         """Brainstorms sketch ideas and drawing instructions."""
         logger.info("---CANVAS AGENT: IMAGINER NODE---")
         
         prompt_template = self._system_prompts["imaginer"]
-        prompt = prompt_template.format(topic=state['topic'], technique=state.get('technique', ''), requirement=state.get('requirement', ''))
         
-        messages = [HumanMessage(content=prompt)]
+        # Base64 encode the generated images
+        image_contents = []
+        if state.get("generated_image_paths"):
+            for image_path in state["generated_image_paths"]:
+                try:
+                    with open(image_path, "rb") as image_file:
+                        encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
+                        image_contents.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{encoded_image}"},
+                        })
+                except Exception as e:
+                    logger.error(f"Error encoding image {image_path}: {e}")
+
+        # Construct the multimodal message
+        prompt_text = prompt_template.format(
+            topic=state['topic'], 
+            technique=state.get('technique', ''), 
+            requirement=state.get('requirement', '')
+        )
+        
+        messages = [
+            HumanMessage(content=[
+                {"type": "text", "text": prompt_text},
+                *image_contents
+            ])
+        ]
         
         structured_llm = self.get_structure_llm(schema=SketchImaginary)
         llm_output = await structured_llm.ainvoke(messages)
@@ -123,6 +203,57 @@ class CanvasAgent(BaseAgent):
                 json.dump(ideas_as_dicts, f, ensure_ascii=False, indent=4)
 
         return {"sketch_ideas": sketch_ideas}
+
+    async def critique_and_refine_node(self, state: CanvasState, config=None):
+        """Critiques and refines the initial sketch ideas."""
+        logger.info("---CANVAS AGENT: CRITIQUE AND REFINE NODE---")
+        
+        initial_ideas = state['sketch_ideas']
+        refined_ideas = []
+
+        critique_llm = self.get_structure_llm(schema=Critique)
+        refine_llm = self.get_structure_llm(schema=SketchDraft)
+
+        critique_prompt_template = self._system_prompts["critique_prompt"]
+        refine_prompt_template = self._system_prompts["refine_prompt"]
+
+        for i, idea in enumerate(initial_ideas):
+            logger.info(f"-> Critiquing idea #{i+1}...")
+            
+            # 1. Critique the idea
+            critique_input = f"**Design Description:**\n{idea.design_description}\n\n**Sketch Description:**\n{idea.sketch_description}"
+            critique_messages = [
+                SystemMessage(content=critique_prompt_template),
+                HumanMessage(content=critique_input)
+            ]
+            critique_output = await critique_llm.ainvoke(critique_messages)
+            critique_text = critique_output.critique
+            logger.info(f"-> Critique #{i+1}: {critique_text}")
+
+            # 2. Refine the idea based on the critique
+            logger.info(f"-> Refining idea #{i+1}...")
+            refine_input = (
+                f"**Original Idea:**\n"
+                f"Design Description: {idea.design_description}\n"
+                f"Sketch Description: {idea.sketch_description}\n\n"
+                f"**Design Director's Critique:**\n{critique_text}"
+            )
+            refine_messages = [
+                SystemMessage(content=refine_prompt_template),
+                HumanMessage(content=refine_input)
+            ]
+            
+            refined_idea = await refine_llm.ainvoke(refine_messages)
+            refined_ideas.append(refined_idea)
+            logger.info(f"-> Refined Idea #{i+1} Description: {refined_idea.design_description}")
+
+        # Save the refined ideas for debugging
+        if state.get('project_dir'):
+            refined_ideas_as_dicts = [idea.model_dump() for idea in refined_ideas]
+            with open(os.path.join(state['project_dir'], "refined_sketch_ideas.json"), "w", encoding="utf-8") as f:
+                json.dump(refined_ideas_as_dicts, f, ensure_ascii=False, indent=4)
+
+        return {"sketch_ideas": refined_ideas}
 
     async def refine_sketch_node(self, state: CanvasState, config=None):
         """Uses a planning agent with a calculator to generate a detailed drawing prompt."""
@@ -217,9 +348,13 @@ class CanvasAgent(BaseAgent):
         graph.add_node("imagine_node", self.imagine_node)
         graph.add_node("draw_sketches_node", self.draw_sketches_node)
         graph.add_node("refine_sketch_node", self.refine_sketch_node)
+        graph.add_node("generate_images_node", self.generate_images_node)
+        graph.add_node("critique_and_refine_node", self.critique_and_refine_node)
 
-        graph.add_edge(START, "imagine_node")
-        graph.add_edge("imagine_node", "refine_sketch_node")
+        graph.add_edge(START, "generate_images_node")
+        graph.add_edge("generate_images_node", "imagine_node")
+        graph.add_edge("imagine_node", "critique_and_refine_node")
+        graph.add_edge("critique_and_refine_node", "refine_sketch_node")
         graph.add_edge("refine_sketch_node", "draw_sketches_node")
         graph.add_edge("draw_sketches_node", END)
         
