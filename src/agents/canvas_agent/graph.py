@@ -13,6 +13,7 @@ import base64
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
+
 from PIL import Image
 
 from src.agents.base import BaseAgent
@@ -21,7 +22,8 @@ from src.config.manager import AgentConfig
 from pydantic import BaseModel, Field
 import re
 from src.infra.tools.image_generate_edit import generate_image_tool
-from src.infra.tools.math_tools import calculator
+from src.infra.tools.math_tools import calculator, find_points_with_shape, calculate_points, arc_points_from_center, line_line_intersection, point_on_arc, line_circle_intersection
+from src.agents.canvas_agent.utils import svg_to_png, show_messages
 
 try:
     import cairosvg
@@ -46,6 +48,10 @@ class Critique(BaseModel):
     """A model for parsing the output of the critique LLM call."""
     critique: str = Field(description="constructive critique of the design concept")
 
+class DescribeOutput(BaseModel):
+    """A model for parsing the output of the describe LLM call."""
+    description: str = Field(description="a detailed description of the image to svg mode")
+
     
 class CanvasAgent(BaseAgent):
     """
@@ -66,11 +72,15 @@ class CanvasAgent(BaseAgent):
         
         # The Drawer Agent: Executes drawing instructions
         drawer_system_prompt = self._system_prompts["drawer"]
-        self.drawer_agent = create_react_agent(model=self._llm, tools=self._tools, prompt=drawer_system_prompt)
+        planner_tools = [find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center]
+        
+        self.drawer_agent = create_react_agent(model=self._math_llm, tools= [find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center] + self._tools, prompt=drawer_system_prompt,)
 
+        self.describe_agent = create_react_agent(model=self._math_llm, tools=[find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center], prompt=self._system_prompts["describe_prompt"])
+        
         # The Planner Agent: Designs the logo using mathematical tools
         planner_system_prompt = self._system_prompts["sketch_planner"]
-        planner_tools = [calculator]
+        
         self.planner_agent = create_react_agent(model=self._math_llm, tools=planner_tools + self._tools, prompt=planner_system_prompt)
 
     def load_math_llm(self):
@@ -110,10 +120,13 @@ class CanvasAgent(BaseAgent):
             "image_generator_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/image_generator_prompt.txt"), "r", encoding="utf-8").read(),
             "critique_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/critique_prompt.txt"), "r", encoding="utf-8").read(),
             "refine_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/refine_prompt.txt"), "r", encoding="utf-8").read(),
+            "describe_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/describe_prompt.txt"), "r", encoding="utf-8").read(),
         }
 
-    def get_structure_llm(self, schema: BaseModel):
-        return self._llm.with_structured_output(schema)
+    def get_structure_llm(self, schema: BaseModel, llm=None):
+        if llm is None:
+            llm = self._llm
+        return llm.with_structured_output(schema)
 
     async def _generate_prompt(self, state: CanvasState):
         logger.info("---CANVAS AGENT: GENERATE PROMPT NODE---")
@@ -133,19 +146,16 @@ class CanvasAgent(BaseAgent):
         image_paths = []
         
         try:
-            image_bytes = await asyncio.to_thread(
+            image_pil = await asyncio.to_thread(
                 generate_image_tool,
                 prompt=prompt,
                 aspect_ratio="1:1"
             )
-            image = Image.open(io.BytesIO(image_bytes))
-
-            if state.get('project_dir'):
-                image_path = os.path.join(state['project_dir'], "generated_image_composition.png")
-                image.save(image_path)
-                logger.info(f"-> Saved generated image to {image_path}")
-                image_paths.append(image_path)
-                
+            save_path = os.path.join(state['project_dir'], "generated_image_composition.png")
+            image_pil.save(save_path)
+            logger.info(f"-> Saved generated image to {save_path}")
+            image_paths.append(save_path)
+           
         except Exception as e:
             logger.error(f"-> Failed to generate or save image: {e}")
         
@@ -288,7 +298,6 @@ class CanvasAgent(BaseAgent):
 
         return {"sketch_ideas": sketch_ideas}
 
-
     async def draw_sketches_node(self, state: CanvasState, config=None):
         """Uses the drawer agent to execute the drawing prompts for each idea."""
         logger.info("---CANVAS AGENT: DRAWER NODE---")
@@ -309,7 +318,8 @@ class CanvasAgent(BaseAgent):
             
             # Invoke the agent. It will now handle the entire tool-calling loop.
             final_state = await self.drawer_agent.ainvoke(agent_input)
-
+            show_messages(final_state.get("messages", []))
+            
             # Extract the tool outputs (SVG strings) from the final message list.
             svg_elements = [
                 message.content 
@@ -323,19 +333,11 @@ class CanvasAgent(BaseAgent):
             # Save the SVG file and convert to PNG
             if state.get('project_dir'):
                 svg_path = os.path.join(state['project_dir'], f"sketch_{i}.svg")
-                png_path = os.path.join(state['project_dir'], f"sketch_{i}.png")
                 with open(svg_path, "w", encoding="utf-8") as f:
                     f.write(final_svg)
-
-                if cairosvg:
-                    try:
-                        cairosvg.svg2png(bytestring=final_svg.encode('utf-8'), write_to=png_path, background_color="white")
-                        logger.info(f"-> Saved PNG sketch to {png_path}")
-                    except Exception as e:
-                        logger.error(f"-> Failed to convert SVG to PNG for sketch {i+1}: {e}")
-                else:
-                    logger.warning("-> `cairosvg` is not installed. Skipping PNG conversion. To install, run: pip install cairosvg")
-            
+                
+                png_path = svg_to_png(svg_path)
+                
             sketches.append({
                 "idea": idea,
                 "svg_elements": svg_elements,
@@ -343,20 +345,132 @@ class CanvasAgent(BaseAgent):
 
         return {"sketches": sketches}
 
+    async def draw_sketches_only_node(self, state: CanvasState, config=None):
+        """Uses the drawer agent to execute the drawing prompts for each idea."""
+        logger.info("---CANVAS AGENT: DRAW ONLY NODE---")
+        
+        draw_prompt = state['draw_prompt']
+        logger.info(f"-> Draw Prompt: {draw_prompt}")
+        messages = [HumanMessage(content=draw_prompt)]
+            
+            # The create_react_agent expects a dictionary with a "messages" key.
+        agent_input = {"messages": messages}
+            
+        # Invoke the agent. It will now handle the entire tool-calling loop.
+        final_state = await self.drawer_agent.ainvoke(agent_input)
+
+            # Extract the tool outputs (SVG strings) from the final message list.
+        svg_elements = [
+                message.content 
+                for message in final_state['messages'] 
+                if isinstance(message, ToolMessage)
+            ]
+        
+        # Assemble the final SVG
+        final_svg = f'<svg width="1000" height="1000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">{"".join(svg_elements)}</svg>'
+        output_dir = state.get('project_dir', 'output/test')
+        os.makedirs(output_dir, exist_ok=True)
+            # Save the SVG file and convert to PNG
+        if output_dir:
+            import time
+            timestamp = time.strftime("%Y%m%d_%H%M%S")  
+            output_name = f"sketch_{timestamp}"
+            svg_path = os.path.join(output_dir, f"{output_name}.svg")
+            # png_path = os.path.join(output_dir, f"{output_name}.png")
+            with open(svg_path, "w", encoding="utf-8") as f:
+                f.write(final_svg)
+
+            png_path = svg_to_png(svg_path)
+            
+        return {"generated_image_paths": [png_path]}
+
+    async def describe_only_node(self, state: CanvasState, config=None):
+        logger.info("---CANVAS AGENT: DESCRIBE ONLY NODE---")
+        image_contents = []
+        if state.get("generated_image_paths"):
+            for image_path in state["generated_image_paths"]:
+                try:
+                    with open(image_path, "rb") as image_file:
+                        encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
+                        image_contents.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{encoded_image}"},
+                        })
+                except Exception as e:
+                    logger.error(f"Error encoding image {image_path}: {e}")
+        
+        messages = [
+            HumanMessage(content=[
+                {"type": "text", "text": "Please describe the image in svg desciption."},
+                *image_contents
+            ])
+        ]
+        
+        # structured_llm = self.get_structure_llm(schema=DescribeOutput, llm=self._math_llm)
+        llm_state = await self.describe_agent.ainvoke({"messages": messages})
+        
+        show_messages(llm_state["messages"])
+        try:
+            description = llm_state["messages"][-1].additional_kwargs["parsed"].description
+            logger.info(f"-> Description: {description}")
+        except Exception as e:
+            logger.info(f"-> Error parsing description: {e}")
+            description = llm_state["messages"][-1].content
+            logger.info(f"-> Description: {description}")
+        
+        return {"draw_prompt": description} 
+        
+    def router_node(self, state: CanvasState, config=None):
+        stage = state.get('stage', 'generate')
+        logger.info(f"-> Router Node: {stage}")
+        
+        if stage == 'draw_only':
+            return 'draw_only'
+        elif stage == 'describe_only':
+            return 'describe_only'
+        else:
+            return 'generate'
+ 
+
     def build_graph(self):
         graph = StateGraph(CanvasState)
+        # graph.add_node("router_node", self.router_node)
         graph.add_node("imagine_node", self.imagine_node)
         graph.add_node("draw_sketches_node", self.draw_sketches_node)
+        graph.add_node("draw_sketches_only_node", self.draw_sketches_only_node)
+        graph.add_node("describe_only_node", self.describe_only_node)
+        
         graph.add_node("refine_sketch_node", self.refine_sketch_node)
         graph.add_node("generate_images_node", self.generate_images_node)
         graph.add_node("critique_and_refine_node", self.critique_and_refine_node)
 
-        graph.add_edge(START, "generate_images_node")
+        # graph.add_edge(START, "router_node")
+        graph.add_conditional_edges(START, self.router_node, {
+            'draw_only': "draw_sketches_only_node",
+            'describe_only': "describe_only_node",
+            'generate': "generate_images_node",
+        })
+        # graph.add_edge("router_node", "generate_images_node")
+        # graph.add_conditional_edges('router_node', 
+        #                             self.router_node,
+        #                             {
+        #                                 'draw_only': 'draw_sketches_only_node',
+        #                                 'describe_only': 'describe_only_node',
+        #                                 'generate': 'generate_images_node',
+        #                             })
+        
+        # graph.add_edge('generate_images_node', 'imagine_node')
         graph.add_edge("generate_images_node", "imagine_node")
         graph.add_edge("imagine_node", "critique_and_refine_node")
         graph.add_edge("critique_and_refine_node", "refine_sketch_node")
         graph.add_edge("refine_sketch_node", "draw_sketches_node")
         graph.add_edge("draw_sketches_node", END)
+        
+        
+        graph.add_edge("draw_sketches_only_node", END)
+        graph.add_edge("describe_only_node",      "draw_sketches_only_node")
+        # graph.add_edge("draw_sketches_only_node", END)
+        # graph.add_edge("describe_only_node", "draw_sketches_only_node")
         
         return graph
     

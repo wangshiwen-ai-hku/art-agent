@@ -25,3 +25,6 @@ class CanvasState(ArtistState):
     sketches: List[SketchOutput]
     generated_image_paths: Optional[List[str]] = None
     
+    ## for single node test
+    stage: Optional[str] = None # draw_only | describe_only | generate
+    draw_prompt: Optional[str] = None
