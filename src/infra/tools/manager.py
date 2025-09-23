@@ -22,6 +22,7 @@ from .flashcard import generate_flashcard
 from src.config.manager import config
 from .image_generate_edit import generate_image_tool, edit_image_tool
 from .canvas_tools import draw_line, draw_circle, draw_rectangle, draw_polygon, draw_bezier_curve, draw_arc, draw_text, draw_ellipse, draw_path
+from .canvas_advance_tools import draw_sigmoid, draw_function
 logger = logging.getLogger(__name__)
 
 # Vanilla tools registry
@@ -55,6 +56,8 @@ vanilla_tools_registry: Dict[str, Tool] = {
     "draw_path": draw_path,
     # "clear_canvas": clear_canvas,
     # "export_sketch": export_sketch,
+    "draw_sigmoid": draw_sigmoid,
+    "draw_function": draw_function,
 }
 
 # MCP tools registry - populated dynamically

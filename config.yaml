@@ -19,6 +19,32 @@ default_model:
 
 # Agent Categories
 agents:
+  core:
+    canvas_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 0.7
+      tools: 
+        - draw_line
+        - draw_circle
+        - draw_rectangle
+        - draw_polygon
+        - draw_bezier_curve
+        - draw_arc
+        - draw_ellipse
+        - draw_path
+        - draw_function
+        - draw_sigmoid
+        # Math tools required by planner_tools
+        - find_points_with_shape
+        - calculate_points
+        - line_circle_intersection
+        - line_line_intersection
+        - point_on_arc
+        - arc_points_from_center
+        
   artist:
     fov_agent:
       model:
@@ -34,31 +60,4 @@ agents:
         api_key: ${GOOGLE_API_KEY}
         temperature: 0.7
       
-
-    canvas_agent:
-      model:
-        model_provider: google_vertexai
-        model: gemini-2.5-flash
-        api_key: ${GOOGLE_API_KEY}
-        temperature: 0.7
-      tools: [draw_line, draw_circle, draw_rectangle, draw_polygon, draw_bezier_curve, draw_arc, draw_text, draw_ellipse, draw_path]
-        
-      # agents:
-      #   - agent_name: drawer
-      #     model:
-      #       model_provider: google_genai
-      #       model: gemini-2.5-flash-image
-      #       api_key: ${GOOGLE_API_KEY}
-      #       temperature: 0.7
-      #   - agent_name: designer
-      #     model:
-      #       model_provider: google_genai
-      #       model: gemini-2.5-pro
-      #       api_key: ${GOOGLE_API_KEY}
-      #       temperature: 0.7
-      #   - agent_name: critic
-      #     model:
-      #       model_provider: google_genai
-      #       model: gemini-2.5-pro
-      #       api_key: ${GOOGLE_API_KEY}
-      #       temperature: 0.7
+    # canvas_agent has been moved to core category

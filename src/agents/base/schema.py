@@ -13,13 +13,7 @@ class ArtistState(TypedDict):
     """Base state schema for artists."""
     messages: Annotated[list[AnyMessage], add_messages]
     # input fields
-    topic: str = Field(default="", description="设计主题")
-    technique: Optional[str] = "设计技法"
-    requirement: Optional[str] = Field(default="", description="用户对设计主题的特殊需求")
-    
-    # result fields
-    design_draft: Optional[str] = ""
-    final_image: Optional[bytes] = None
+    topic: Optional[str] = None
     project_dir: Optional[str] = None
     
     

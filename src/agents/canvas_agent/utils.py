@@ -8,10 +8,13 @@ except ImportError:
     cairosvg = None
 
 def show_messages(update: list[BaseMessage]):
+    print("\n\n" + "="*100 )
     for m in update:
         if isinstance(m, HumanMessage):
+            # print only text
+            print(f"  [{m.type}] {m.name or ''}: {m.content[:800]}")
             continue
-        print(f"  [{m.type}] {m.name or ''}: {m.content[:200]}")
+        print(f"  [{m.type}] {m.name or ''}: {m.content[:800]}")
         if isinstance(m, ToolMessage):
             print(f"  [tool-result] {m.content[:200]}")     
         if hasattr(m, "tool_calls") and m.tool_calls:

@@ -59,9 +59,7 @@ class BaseAgent(ABC):
             self._llm = self._llm.bind_tools(self._tools)
             
         self._graph = self.build_graph()
-    
-
-        self.compiled_graph = self.compile_graph()  # entry_point
+        self.compiled_graph = self.compile_graph()
         
     # @abstractmethod
     def _init_llm(self):
@@ -97,14 +95,11 @@ class BaseAgent(ABC):
         return graph
 
     def compile_graph(self) -> CompiledStateGraph:
-        """Compile the agent graph with memory checkpointer.
-
-        Returns:
-            The compiled graph ready for execution.
-        """
+        """Compile the agent graph with memory checkpointer."""
+        # This is now optional and can be used for non-service-based testing
         memory = MemorySaver()
         compiled_graph = self._graph.compile(checkpointer=memory)
-        logger.info("Agent graph built and compiled successfully")
+        logger.info("Agent graph built and compiled successfully with MemorySaver")
         return compiled_graph
 
     async def dummy_node(
