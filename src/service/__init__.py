@@ -10,6 +10,10 @@ from langgraph.graph.state import CompiledStateGraph
 from src.config.manager import config
 from src.agents.canvas_agent import CanvasAgent, CanvasState
 from langchain_core.runnables import RunnableConfig
+import tempfile
+import base64
+from src.agents.canvas_agent.utils import svg_to_png
+import os
 
 # Global agent instance
 agent_instance: CanvasAgent | None = None
@@ -110,3 +114,34 @@ async def canvas_chat(req: ChatRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+
+
+@app.post('/api/canvas/convert_svg_to_png')
+async def convert_svg_to_png_endpoint(payload: dict):
+    """Receive an SVG string, write to a temp file, convert to PNG using svg_to_png, return base64 PNG."""
+    svg = payload.get('svg')
+    if not svg:
+        raise HTTPException(status_code=400, detail='Missing svg in payload')
+    tmp_svg = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.svg', delete=False, mode='w', encoding='utf-8') as f:
+            f.write(svg)
+            tmp_svg = f.name
+
+        png_path = svg_to_png(tmp_svg)
+        if not png_path:
+            raise HTTPException(status_code=500, detail='SVG to PNG conversion failed on server')
+
+        with open(png_path, 'rb') as pf:
+            png_bytes = pf.read()
+        b64 = base64.b64encode(png_bytes).decode('ascii')
+        data_url = f'data:image/png;base64,{b64}'
+        return { 'png_base64': data_url }
+    finally:
+        try:
+            if tmp_svg and os.path.exists(tmp_svg):
+                os.remove(tmp_svg)
+            if png_path and os.path.exists(png_path):
+                os.remove(png_path)
+        except Exception:
+            pass

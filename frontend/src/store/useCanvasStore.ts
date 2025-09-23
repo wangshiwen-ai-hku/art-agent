@@ -19,6 +19,7 @@ interface CanvasState {
   setSelectionBox: (box: BoundingBox | null) => void;
   undo: () => void;
   redo: () => void;
+  updateSvg: (index: number, newSvg: string) => void; // 新增的方法
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -30,9 +31,11 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   addSvg: (svg) => set((state) => {
     const newHistory = state.svgHistory.slice(0, state.currentSvgIndex + 1);
     newHistory.push(svg);
+    // Enforce a maximum of 10 items in history
+    const limitedHistory = newHistory.slice(Math.max(0, newHistory.length - 10));
     return { 
-      svgHistory: newHistory,
-      currentSvgIndex: newHistory.length - 1,
+      svgHistory: limitedHistory,
+      currentSvgIndex: limitedHistory.length - 1,
      };
   }),
 
@@ -49,4 +52,21 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   redo: () => set((state) => ({
     currentSvgIndex: Math.min(state.svgHistory.length - 1, state.currentSvgIndex + 1),
   })),
-})); 
+
+  // 新增的 updateSvg 方法
+  updateSvg: (index: number, newSvg: string) => set((state) => {
+    if (index < 0 || index >= state.svgHistory.length) {
+      console.error('Invalid index for updateSvg:', index);
+      return state;
+    }
+    
+    const newHistory = [...state.svgHistory];
+    newHistory[index] = newSvg;
+    
+    return { 
+      svgHistory: newHistory,
+      // 保持当前索引不变，因为我们只是更新了当前 SVG 的内容
+      currentSvgIndex: state.currentSvgIndex
+    };
+  }),
+}));

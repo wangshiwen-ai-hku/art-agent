@@ -20,7 +20,10 @@ const ChatComponent: React.FC = () => {
     try {
       const text = await file.text();
       if (file.name.toLowerCase().endsWith('.svg')) {
-        setUploadedSvg(text);
+        // Immediately add the uploaded SVG to the global store so the canvas renders it
+        addSvg(text);
+        // Keep a copy for potential send, but clear since we've already added to canvas
+        setUploadedSvg(null);
       } else {
         setUploadedSvg(null);
       }

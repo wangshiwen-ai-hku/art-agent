@@ -6,31 +6,33 @@ const HistoryBar: React.FC = () => {
   const { svgHistory, currentSvgIndex, setCurrentSvgIndex, undo, redo } = useCanvasStore();
 
   // Mock data for display
-  const displayHistory = svgHistory.length > 0 ? svgHistory : ['<svg viewBox="0 0 100 100"><rect width="80" height="80" x="10" y="10" fill="lightblue"/></svg>', '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="lightgreen"/></svg>'];
-  const displayIndex = svgHistory.length > 0 ? currentSvgIndex : 0;
+  const displayHistory = svgHistory.length > 0 ? svgHistory : [];
+  const displayIndex = svgHistory.length > 0 ? currentSvgIndex : -1;
 
 
   return (
-    <div className="bg-white p-2 border-b border-gray-200 shadow-sm">
+    <div className="bg-gray-800 bg-opacity-80 backdrop-blur-sm p-2 rounded-xl shadow-lg border border-white border-opacity-20">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          <button onClick={undo} disabled={currentSvgIndex <= 0} className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={undo} disabled={currentSvgIndex <= 0} className="p-2 rounded-md text-white hover:bg-white hover:bg-opacity-20 disabled:opacity-50 disabled:cursor-not-allowed">
             <Undo size={20} />
           </button>
-          <button onClick={redo} disabled={currentSvgIndex >= svgHistory.length - 1} className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={redo} disabled={currentSvgIndex >= svgHistory.length - 1} className="p-2 rounded-md text-white hover:bg-white hover:bg-opacity-20 disabled:opacity-50 disabled:cursor-not-allowed">
             <Redo size={20} />
           </button>
         </div>
-        <div className="flex-1 flex items-center space-x-2 overflow-x-auto">
+        <div className="flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-800">
+        <div className="flex items-center gap-2 h-20 px-1">
           {displayHistory.map((svg, index) => (
             <button
               key={index}
               onClick={() => setCurrentSvgIndex(index)}
-              className={`w-16 h-16 p-1 rounded-md border-2 ${displayIndex === index ? 'border-blue-500' : 'border-transparent'} hover:border-blue-400`}
+              className={`flex-shrink-0 w-20 h-20 p-1 rounded-md border-2 ${displayIndex === index ? 'border-blue-400' : 'border-transparent'} hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
             >
-              <div className="w-full h-full bg-white rounded-sm" dangerouslySetInnerHTML={{ __html: svg }} />
+              <div className="w-full h-full bg-white rounded-sm flex items-center justify-center overflow-hidden" dangerouslySetInnerHTML={{ __html: svg }} />
             </button>
           ))}
+          </div>
         </div>
       </div>
     </div>
