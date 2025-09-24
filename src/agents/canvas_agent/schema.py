@@ -7,7 +7,8 @@ STATE_MAP={
     "edit": "edit_node",
     "generate": "generate_images_node",
     "draw": "draw_sketches_only_node",
-    "describe": "describe_only_node"
+    "describe": "describe_only_node",
+    "pick": "pick_path_node"
 }
 class SketchDraft(BaseModel):
     """A model for a single sketch idea, including its description and drawing instructions."""

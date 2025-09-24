@@ -38,6 +38,28 @@ def generate_image_tool(prompt: str, aspect_ratio: str):
     
     return image.generated_images[0].image
 
+@tool
+def generate_image(prompt: str, aspect_ratio: str):
+    """
+    draw image with image generation model
+    """
+    logger.info("[draw_image_tool] 进入")
+    design_prompt = prompt
+    ## load multi-modal messages 
+    user_prompt = f"Highly artistic typography, logo, visual arts. no text. {design_prompt}"
+    logger.info(f"[draw_image_tool] 📝 user_prompt: {user_prompt}")
+    image = client.models.generate_images(
+        model=generation_model,
+        prompt=user_prompt,
+        config=GenerateImagesConfig(
+            aspect_ratio=aspect_ratio,
+            number_of_images=1,
+            image_size="1K",
+        ),
+    )
+    
+    return image.generated_images[0].image
+
 # @tool
 def edit_image_tool(edit_prompt, reference_image):
     """

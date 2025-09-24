@@ -116,3 +116,15 @@ def draw_path(path_data: str,
     """
     path = svgwrite.path.Path(d=path_data, stroke=color, fill=fill, stroke_width=width)
     return path.tostring()
+
+
+CanvasAgentTools = [
+    draw_line,
+    draw_circle,
+    draw_rectangle,
+    draw_polygon,
+    draw_arc,
+    draw_bezier_curve,
+    draw_text,
+    draw_ellipse,
+]

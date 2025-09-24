@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from langchain_core.messages import ToolMessage, BaseMessage, HumanMessage
+import base64
+
+from src.infra.tools.svg_tools import convert_svg_to_png_base64
 
 try:
     import cairosvg
@@ -56,6 +59,23 @@ def svg_to_png(svg_path: str) -> str:
     except Exception as e:
         print(f"-> Failed to convert SVG to PNG: {e}")
         return ""
+
+def convert_svg_to_png_base64(svg_code: str) -> str:
+    """svg_code: the svg code of the path you want to draw.
+        example: <svg width="100" height="100">
+                    <path d="M10,10 L50,50 Q70,30 90,90 Z" fill="red"/>
+                </svg>
+    return: the base64 str of the png image of the picked paths.
+    """
+    try:
+        # 使用cairosvg或其他SVG渲染库
+        import cairosvg
+        png_data = cairosvg.svg2png(bytestring=svg_code.encode())
+        base64_str = base64.b64encode(png_data).decode('utf-8')
+        return f"data:image/png;base64,{base64_str}"
+    except ImportError:
+        # 备选方案：返回SVG的base64
+        return f"data:image/svg+xml;base64,{base64.b64encode(svg_code.encode()).decode()}"
 
 
 # ----------------- 使用示例 -----------------

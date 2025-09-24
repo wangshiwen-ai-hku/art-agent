@@ -14,19 +14,23 @@ import base64
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
+from langchain.chat_models import init_chat_model
 from langgraph.types import Command
 
+from dataclasses import asdict
 from PIL import Image
 from langgraph.types import interrupt
 
 from src.agents.base import BaseAgent
 from .schema import CanvasState, SketchDraft, SketchOutput, STATE_MAP
-from src.config.manager import AgentConfig
+from src.config.manager import AgentConfig, config
 from pydantic import BaseModel, Field
 import re
-from src.infra.tools.image_generate_edit import generate_image_tool
+from src.infra.tools.image_generate_edit import generate_image_tool, generate_image
 from src.infra.tools.math_tools import calculator, find_points_with_shape, calculate_points, arc_points_from_center, line_line_intersection, point_on_arc, line_circle_intersection
-from src.agents.canvas_agent.utils import svg_to_png, show_messages
+from src.agents.canvas_agent.utils import svg_to_png, show_messages, convert_svg_to_png_base64
+from src.infra.tools.svg_tools import PickPathTools
+from .supervisor import create_supervisor, _prepare_tool_node
 
 try:
     import cairosvg
@@ -71,25 +75,37 @@ class CanvasAgent(BaseAgent):
         super().__init__(agent_config)
         self._load_system_prompt()
         self.config = agent_config
-        self.load_math_llm()
         
         # The Drawer Agent: Executes drawing instructions
         drawer_system_prompt = self._system_prompts["drawer"]
         planner_tools = [find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center]
         
-        self.drawer_agent = create_react_agent(model=self._math_llm, tools= [find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center] + self._tools, prompt=drawer_system_prompt,)
+        self.drawer_agent = create_react_agent(model=self.init_llm(0.2), name="drawer_agent", tools= [find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center] + self._tools, prompt=drawer_system_prompt,)
+        
+        # describe agent, with svg2png and png2base64 tools to help understand the svg code.
+        self.describe_agent = create_react_agent(model=self.init_llm(), name="describe_agent", tools=planner_tools, prompt=self._system_prompts["describe_prompt"])
+        
+        self.pick_path_agent = create_react_agent(model=self.init_llm(), name='pick_path_agent',
+                                                  tools=PickPathTools, prompt=self._system_prompts["pick_path_prompt"])
+        # edit agent, possible with optimization tools
+        self.edit_agent = create_react_agent(model=self.init_llm(), name="edit_agent",
+                                             tools=planner_tools + self._tools, prompt=self._system_prompts["edit_prompt"])
+        
+        # brainstorm agent, image generation agent with tools
+        # self.brainstorm_agent = create_react_agent(model=self.init_llm(1.0), tools=[generate_image], prompt=self._system_prompts["brainstorm_prompt"])
+              
+        # planner agent, math agent with tools
+        self.planner_agent = create_react_agent(model=self.init_llm(), name="planner_agent", tools=planner_tools, prompt=self._system_prompts["sketch_planner"])
+        
+        self._tool_node = _prepare_tool_node(tools=self._tools, handoff_tool_prefix="", add_handoff_messages=True, agent_names=set('drawer_agent'))
+        self._llm.bind_tools([self._tool_node])
+        supervisor_graph = self.build_graph()
+        
 
-        self.describe_agent = create_react_agent(model=self._math_llm, tools=[find_points_with_shape, calculate_points, line_circle_intersection, line_line_intersection, point_on_arc, arc_points_from_center], prompt=self._system_prompts["describe_prompt"])
-        
-        self.edit_agent = create_react_agent(model=self._math_llm, tools=planner_tools + self._tools, prompt=self._system_prompts["edit_prompt"])
-        
-        # The Planner Agent: Designs the logo using mathematical tools
-        planner_system_prompt = self._system_prompts["sketch_planner"]
-        
-        self.planner_agent = create_react_agent(model=self._math_llm, tools=planner_tools + self._tools, prompt=planner_system_prompt)
-
-    def load_math_llm(self):
-        self._math_llm = self._init_llm()
+    def init_llm(self, temperature: float = 0.7):
+        config = self._model_config
+        config.temperature = temperature
+        return init_chat_model(**asdict(config))
 
     def _load_system_prompt(self):
         """Loads system prompts and prepares SVG examples."""
@@ -128,6 +144,7 @@ class CanvasAgent(BaseAgent):
             "critique_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/critique_prompt.txt"), "r", encoding="utf-8").read(),
             "refine_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/refine_prompt.txt"), "r", encoding="utf-8").read(),
             "describe_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/describe_prompt.txt"), "r", encoding="utf-8").read(),
+            "pick_path_prompt": open(os.path.join(os.path.dirname(__file__), "prompt/pick_path_prompt.txt"), "r", encoding="utf-8").read(),
         }
 
     def get_structure_llm(self, schema: BaseModel, llm=None):
@@ -140,6 +157,43 @@ class CanvasAgent(BaseAgent):
         # state['messages'] = [SystemMessage(content=self._system_prompts["chat_prompt"])] + state.get("messages", [])
         return 
     
+    async def pick_path_node(self, state: CanvasState, config=None):
+        logger.info("---CANVAS AGENT: PICK PATH NODE---")
+        try:
+            user_message = state.get('user_message')
+            input_svg_code = state.get('svg_history', [])[-1]
+            
+            input_image = convert_svg_to_png_base64(input_svg_code)
+            prompt = self._system_prompts["pick_path_prompt"].format(
+                user_message=user_message,
+                svg_code=input_svg_code,
+            )
+            text_content = {
+                "type": "text",
+                "text": prompt
+            }
+            image_content = {
+                "type": "image_url",
+                "image_url": {"url": input_image}
+            }
+            agent_input = {"messages": [HumanMessage(content=[image_content,text_content])]}
+            logger.info(f"-> Picking path with input: {prompt}")
+            async for chunk in self.pick_path_agent.astream(agent_input):
+                # print(chunk)
+                if chunk.get('messages'):
+                    show_messages(chunk.get('messages', []))
+
+            # final_state = await self.pick_path_agent.ainvoke(agent_input)
+            show_messages(final_state.get('messages', []))
+            picked_path = final_state.get('messages', [])[-1].content
+            return {"svg_history": [picked_path], "messages": [HumanMessage(content=prompt), AIMessage(content="Successfull picked path:" + picked_path)]}
+        
+        except Exception as e:
+            logger.error(f"Error in pick_path_node: {e}")
+            error_message = AIMessage(content=f"An error occurred during picking path: {e}")
+            state["messages"].append(error_message)
+            return Command(goto="wait_for_user_input", )
+        
     async def wait_for_user_input(self, state: CanvasState, config=None):
         logger.info("---CANVAS AGENT: WAIT FOR USER INPUT---")
         # The graph interrupts here. The input from the next `ainvoke` call
@@ -587,32 +641,33 @@ class CanvasAgent(BaseAgent):
     
     def build_graph(self):
         graph = StateGraph(CanvasState)
-        graph.add_node("imagine_node", self.imagine_node)
-        graph.add_node("draw_sketches_node", self.draw_sketches_node)
-        graph.add_node("draw_sketches_only_node", self.draw_sketches_only_node)
-        graph.add_node("describe_only_node", self.describe_only_node)
-        graph.add_node("refine_sketch_node", self.refine_sketch_node)
-        graph.add_node("generate_images_node", self.generate_images_node)
-        graph.add_node("critique_and_refine_node", self.critique_and_refine_node)
+        # graph.add_node("imagine_node", self.imagine_node)
+        # graph.add_node("draw_sketches_node", self.draw_sketches_node)
+        # graph.add_node("draw_sketches_only_node", self.draw_sketches_only_node)
+        # graph.add_node("describe_only_node", self.describe_only_node)
+        # graph.add_node("refine_sketch_node", self.refine_sketch_node)
+        # graph.add_node("generate_images_node", self.generate_images_node)
+        # graph.add_node("critique_and_refine_node", self.critique_and_refine_node)
         graph.add_node("wait_for_user_input", self.wait_for_user_input)
+        # graph.add_node("pick_path_node", self.pick_path_node)
         graph.add_node("chat_node", self.chat_node)
-        graph.add_node("edit_node", self.edit_node)
+        # graph.add_node("edit_node", self.edit_node)
         # graph.add_node("router_node", self.router_node)
         graph.add_node("init_context_node", self._init_context_node)
         
         graph.add_edge(START, "init_context_node")
         graph.add_edge("init_context_node", "wait_for_user_input")
         ## full generate loop
-        graph.add_edge("generate_images_node", "imagine_node")
-        graph.add_edge("imagine_node", "critique_and_refine_node")
-        graph.add_edge("critique_and_refine_node", "refine_sketch_node")
-        graph.add_edge("refine_sketch_node", "draw_sketches_node")
-        graph.add_edge("draw_sketches_node", "wait_for_user_input")
-        graph.add_edge("edit_node", "wait_for_user_input")
-        graph.add_edge("draw_sketches_only_node", "wait_for_user_input")
-        graph.add_edge("describe_only_node", "wait_for_user_input")
+        # graph.add_edge("generate_images_node", "imagine_node")
+        # graph.add_edge("imagine_node", "critique_and_refine_node")
+        # graph.add_edge("critique_and_refine_node", "refine_sketch_node")
+        # graph.add_edge("refine_sketch_node", "draw_sketches_node")
+        # graph.add_edge("draw_sketches_node", "wait_for_user_input")
+        # graph.add_edge("edit_node", "wait_for_user_input")
+        # graph.add_edge("draw_sketches_only_node", "wait_for_user_input")
+        # graph.add_edge("describe_only_node", "wait_for_user_input")
         graph.add_edge("chat_node", "wait_for_user_input")
-
+        # graph.add_edge("pick_path_node", "wait_for_user_input")
         return graph
     
     

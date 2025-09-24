@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from typing_extensions import Annotated, TypedDict
 from langgraph.graph.message import add_messages, MessagesState
 from pydantic import BaseModel, Field
@@ -13,7 +13,9 @@ class ArtistState(TypedDict):
     """Base state schema for artists."""
     messages: Annotated[list[AnyMessage], add_messages]
     # input fields
-    topic: Optional[str] = None
     project_dir: Optional[str] = None
+
+    user_message: Optional[str] = None
+    svg_history: Optional[List[str]] = None
     
     
