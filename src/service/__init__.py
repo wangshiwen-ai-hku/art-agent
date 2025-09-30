@@ -8,12 +8,13 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.types import Command
 from langgraph.graph.state import CompiledStateGraph
 from src.config.manager import config
-from src.agents.canvas_agent import CanvasAgent, CanvasState
+from .canvas_agent import CanvasAgent, CanvasState
 from langchain_core.runnables import RunnableConfig
 import tempfile
 import base64
-from src.agents.canvas_agent.utils import svg_to_png
+from .canvas_agent.utils import svg_to_png
 import os
+from .canvas_agent.schema import create_initial_state, AgentStage
 
 # Global agent instance
 agent_instance: CanvasAgent | None = None
@@ -44,11 +45,7 @@ async def lifespan(app: FastAPI):
             # The graph is compiled with the active checkpointer from the context.
             agent.compiled_graph: CompiledStateGraph = agent.build_graph().compile(checkpointer=checkpointer)
             agent_instance = agent
-            init_state = {
-                "messages": [],
-                "stage": "chat",
-                "user_message": ""
-            }
+            init_state = create_initial_state(project_dir="output/session_" + thread_id)
             await agent.compiled_graph.ainvoke(init_state, config=thread_config)
             print("CanvasAgent initialized and compiled successfully.")
             # Yield control to the running application. The connection remains open.
@@ -89,20 +86,37 @@ async def canvas_chat(req: ChatRequest):
     if not agent_instance or not agent_instance.compiled_graph:
         raise HTTPException(status_code=503, detail="Agent is not initialized or is misconfigured.")
 
-    graph_input = {
-        "user_message": req.message,
-        "stage": req.stage,
-        "svg_history": [req.svg] if req.svg else [],
+    current_state = await agent_instance.compiled_graph.aget_state(thread_config)
+
+    # We need to map the flat request to the nested state
+    update_payload = {
+        "user_input": req.message,
+        "workflow": {
+            "current_stage": AgentStage(req.stage),
+        },
+        "content": {}
     }
+    
+    # If an SVG is provided in the request, update the history.
+    if req.svg:
+        from .canvas_agent.schema import SvgArtwork
+        # This assumes the full SVG code is sent.
+        # In a real app, you might just send an ID and retrieve the full SVG on the backend.
+        if current_state:
+            # Append to existing history
+            history = current_state.values.get("content", {}).get("svg_history", [])
+            history.append(SvgArtwork(svg_code=req.svg, elements=[]))
+            update_payload["content"]["svg_history"] = history
 
     try:
         # ainvoke will use the checkpointer that was configured and kept alive at startup
-        msg = await agent_instance.compiled_graph.ainvoke(Command(resume=graph_input), config=thread_config)
+        msg = await agent_instance.compiled_graph.ainvoke(Command(resume=update_payload), config=thread_config)
         
-        all_messages = msg.get("messages", [])
+        all_messages = msg.get("conversation", {}).get("messages", [])
         last_ai_message = next((m.content for m in reversed(all_messages) if m.type == 'ai'), "Task received. Waiting for next input.")
         
-        latest_svg = msg.get("svg_history", [])[-1] if msg.get("svg_history") else None
+        current_svg_artwork = msg.get("content", {}).get("current_svg")
+        latest_svg = current_svg_artwork.get("svg_code") if current_svg_artwork else None
         tool_outputs = [m.content for m in all_messages if m.type == 'tool']
 
         return {

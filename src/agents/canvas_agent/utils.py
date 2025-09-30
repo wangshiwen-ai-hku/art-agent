@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from langchain_core.messages import ToolMessage, BaseMessage, HumanMessage
+from langchain_core.messages import ToolMessage, BaseMessage, HumanMessage, AIMessage
 import base64
 
 from src.infra.tools.svg_tools import convert_svg_to_png_base64
@@ -15,16 +15,18 @@ def show_messages(update: list[BaseMessage]):
     for m in update:
         if isinstance(m, HumanMessage):
             # print only text
+            if 'base64' in m.content:
+                continue
             print(f"  [{m.type}] {m.name or ''}: {m.content[:800]}")
             continue
-        print(f"  [{m.type}] {m.name or ''}: {m.content[:800]}")
-        if isinstance(m, ToolMessage):
-            print(f"  [tool-result] {m.content[:200]}")     
+        if isinstance(m, AIMessage):
+            print(f"  [{m.type}] {m.name or ''}: {m.content[:800]}")
         if hasattr(m, "tool_calls") and m.tool_calls:
             for tc in m.tool_calls:
                 print(f"  [tool-call] {tc['name']}({tc['args']})")
         if isinstance(m, ToolMessage):
             print(f"  [tool-result] {m.content[:200]}")     
+        
 
 def svg_to_png(svg_path: str) -> str:
     """

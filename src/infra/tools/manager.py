@@ -17,12 +17,13 @@ from .search import tavily_search
 from .metaso import retrieve_relevant_image, retrieve_relevant_video
 from .triggers import handoff_to_other_agent, step_done, think_tool, plan_tool
 from .ppt_template_select.ppt_template_select import ppt_template_select
-from .exp import generate_experiment
-from .flashcard import generate_flashcard
+# from .exp import generate_experiment
+# from .flashcard import generate_flashcard
 from src.config.manager import config
-from .image_generate_edit import generate_image_tool, edit_image_tool
-from .canvas_tools import draw_line, draw_circle, draw_rectangle, draw_polygon, draw_bezier_curve, draw_arc, draw_text, draw_ellipse, draw_path
-from .canvas_advance_tools import draw_sigmoid, draw_function
+from .image_tools import generate_image_tool, edit_image_tool
+from .draw_canvas_tools import draw_agent_with_tool
+from .edit_canvas_tools import edit_agent_with_tool
+
 logger = logging.getLogger(__name__)
 
 # Vanilla tools registry
@@ -36,28 +37,12 @@ vanilla_tools_registry: Dict[str, Tool] = {
     "think_tool": think_tool,
     "plan_tool": plan_tool,
     "step_done": step_done,
-    # PPT template selection
-    "ppt_template_select": ppt_template_select,
-    # mm toosl
-    "generate_experiment": generate_experiment,
-    "generate_flashcard": generate_flashcard,
     # "generate_image_tool": generate_image_tool,
     # "edit_image_tool": edit_image_tool,
     "generate_image_tool": generate_image_tool,
     "edit_image_tool": edit_image_tool,
-    "draw_line": draw_line,
-    "draw_circle": draw_circle,
-    "draw_rectangle": draw_rectangle,
-    "draw_polygon": draw_polygon,
-    "draw_bezier_curve": draw_bezier_curve,
-    "draw_arc": draw_arc,
-    "draw_text": draw_text,
-    "draw_ellipse": draw_ellipse,
-    "draw_path": draw_path,
-    # "clear_canvas": clear_canvas,
-    # "export_sketch": export_sketch,
-    "draw_sigmoid": draw_sigmoid,
-    "draw_function": draw_function,
+    "edit_agent_with_tool": edit_agent_with_tool,
+    "draw_agent_with_tool": draw_agent_with_tool,
 }
 
 # MCP tools registry - populated dynamically

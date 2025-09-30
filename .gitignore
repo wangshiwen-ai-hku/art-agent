@@ -3,10 +3,11 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+resource
 apikey.json
 # C extensions
 *.so
-output/
+output
 open-canvas
 # Distribution / packaging
 .Python
@@ -52,7 +53,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-
+actwise-agents
 # Translations
 *.mo
 *.pot

@@ -51,6 +51,23 @@ def _plot_fn(f: Callable[[float], float],
     return "M " + " L ".join(pts)
 
 
+def _draw_path(path_data: str,
+              color: str = "black", fill: str = "none", width: int = 2) -> str:
+    """
+    Draw a complex shape using an SVG path data string and return the SVG string.
+    The path_data string uses commands like:
+    M x,y (moveto)
+    L x,y (lineto)
+    C c1x,c1y c2x,c2y x,y (curveto)
+    Q c1x,c1y x,y (quadratic Bézier curve)
+    A rx,ry rot large_arc_flag,sweep_flag x,y (elliptical arc)
+    Z (closepath)
+    Example: "M 100,100 L 900,900 C 500,900 500,100 900,100 Z"
+    """
+    path = svgwrite.path.Path(d=path_data, stroke=color, fill=fill, stroke_width=width)
+    return path.tostring()
+
+
 # -------------- 可安全执行的单表达式解析器 --------------
 # 仅允许数学运算符与常用函数，防止任意代码执行
 _SAFE_OPS = {

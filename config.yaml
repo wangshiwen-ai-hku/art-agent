@@ -27,24 +27,39 @@ agents:
         api_key: ${GOOGLE_API_KEY}
         temperature: 0.7
       tools: 
-        - draw_line
-        - draw_circle
-        - draw_rectangle
-        - draw_polygon
-        - draw_bezier_curve
-        - draw_arc
-        - draw_ellipse
-        - draw_path
-        - draw_function
-        - draw_sigmoid
-        # Math tools required by planner_tools
-        - find_points_with_shape
-        - calculate_points
-        - line_circle_intersection
-        - line_line_intersection
-        - point_on_arc
-        - arc_points_from_center
+        - edit_agent_with_tool
+        - draw_agent_with_tool
+        - generate_image_tool
+
+    draw_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 0.4
+
+    design_loop_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 1.0
+
+    edit_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 0.4
+    
+    math_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 0.4
         
+ 
   artist:
     fov_agent:
       model:
