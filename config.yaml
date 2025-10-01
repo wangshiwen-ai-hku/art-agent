@@ -45,6 +45,13 @@ agents:
         api_key: ${GOOGLE_API_KEY}
         temperature: 1.0
 
+    design_agent:
+      model:
+        model_provider: google_vertexai
+        model: gemini-2.5-flash
+        api_key: ${GOOGLE_API_KEY}
+        temperature: 1.0
+
     edit_agent:
       model:
         model_provider: google_vertexai

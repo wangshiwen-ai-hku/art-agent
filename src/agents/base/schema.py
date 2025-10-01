@@ -12,8 +12,11 @@ class BaseState(TypedDict):
 class ArtistState(TypedDict):
     """Base state schema for artists."""
     messages: Annotated[list[AnyMessage], add_messages]
+  
     # input fields
     project_dir: Optional[str] = None
+    
+    task_description: Optional[str] = None
 
     user_message: Optional[str] = None
     svg_history: Optional[List[str]] = None

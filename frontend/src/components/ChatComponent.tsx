@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect} from 'react';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { 
   Send, 
@@ -21,8 +21,9 @@ import {
 
 type AgentStage = 'generate' | 'edit' | 'chat' | 'draw' | 'describe';
 
+
 const ChatComponent: React.FC = () => {
-  const { messages, addMessage, selectionBox, addSvg } = useCanvasStore();
+  const { messages, addMessage, selectionBox, addSvg} = useCanvasStore();
   const [inputValue, setInputValue] = useState('');
   const [uploadedSvg, setUploadedSvg] = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
@@ -153,7 +154,8 @@ const ChatComponent: React.FC = () => {
     console.log('Clear chat functionality would be implemented here');
   };
 
-  // Stage configurations with colors and icons
+  // Stage configurations with colors and icons, and save global mode_color, so that the main pannel's color will change
+  // MODE_COLOR is the color of the main pannel
   const stageConfigs = {
     generate: { 
       icon: Wand2, 
@@ -181,8 +183,9 @@ const ChatComponent: React.FC = () => {
       bg: '#6366f1'
     }
   };
-
+  
   const currentConfig = stageConfigs[currentStage];
+
 
   const containerStyle: React.CSSProperties = {
     position: 'fixed',
@@ -216,6 +219,7 @@ const ChatComponent: React.FC = () => {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     backdropFilter: 'blur(8px)',
   };
+  
 
   return (
     <div style={isMinimized ? {...containerStyle, height: '80px', bottom: '16px', top: 'auto'} : containerStyle}>

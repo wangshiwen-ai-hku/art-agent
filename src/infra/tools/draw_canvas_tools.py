@@ -10,9 +10,9 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
 from dataclasses import asdict
 from langchain.chat_models import init_chat_model
-from .math_tools import math_agent, _init_math_agent, MATH_SYSTEM_PROMPT, MATH_PROMPT, parse_math_agent_response
+from .math_tools import math_agent, _init_math_agent, MATH_SYSTEM_PROMPT, MATH_PROMPT, parse_math_agent_response, MATH_AGENT_PROFILE
 from .edit_canvas_tools import edit_agent, _init_edit_agent, edit_agent_with_tool
-from .design_tools import design_create_plan, design_reflect
+# from .design_tools import design_agent, DESIGN_SYSTEM_PROMPT, DESIGN_IN_LOOP_PROMPT
 from src.utils.print_utils import show_messages
 import json
 import re, glob
@@ -285,43 +285,15 @@ async def calculate_path_data_with_math_agent(task_description: str, coarse_svg_
     Returns:
         warpped svg string: str, the complex data of svg path wrapped by <svg> tags
     """
-    # Defensive checks: prevent callers from delegating entire designs to the math agent.
-    def _is_broad_design_text(text: str) -> bool:
-        if not text:
-            return False
-        lowered = text.lower()
-        broad_keywords = [
-            'design', 'logo', 'compose', 'layout', 'full', 'whole', 'combine', 'arrange', 'complete', 'entire',
-            'create a', 'make a', 'draw a', 'sketch a'
-        ]
-        # If the prompt is long or contains broad design keywords, consider it a broad design request
-        if len(text) > 300:
-            return True
-        for kw in broad_keywords:
-            if kw in lowered:
-                return True
-        return False
-
-    if _is_broad_design_text(task_description) and not coarse_svg_path_data:
-        # Return a structured error that the draw agent (or a human) can use to re-plan.
-        guidance = (
-            "Task appears to be a full design. The math agent only accepts focused micro-tasks (e.g., "
-            "'compute cubic bezier for mouse-back between (x1,y1) and (x2,y2) with symmetry axis x=50'). "
-            "Please provide a concise computational subtask and, if possible, a coarse_svg_path_data sample."
-        )
-        return json.dumps({
-            "type": "error",
-            "value": "task_too_broad",
-            "math_agent_explanation": "",
-            "explanation": guidance,
-            "usage": "Refactor your request into a single numeric geometric computation and retry."
-        })
-
     messages = [
         SystemMessage(content=MATH_SYSTEM_PROMPT),
         HumanMessage(content=MATH_PROMPT.format(user_instruction=task_description, coarse_svg_path_data=coarse_svg_path_data, other_info=other_info, width=width, height=height))
     ]
-    state = await math_agent.ainvoke({"messages": messages})
+    # Ensure we call the math agent implementation from math_tools.py
+    # The math agent is initialized in that module and exposed as `math_agent`.
+    # Call its `ainvoke` method rather than attempting to call this function recursively.
+    from .math_tools import math_agent as _math_agent
+    state = await _math_agent.ainvoke({"messages": messages})
 
     path_data = parse_math_agent_response(state)
 
@@ -352,7 +324,7 @@ def _add_transform(svg_string: str, transform: str) -> str:
     return new_svg_string
 
 @tool
-def translate_shape(svg_string: str, dx: int, dy: int) -> str:
+def transform_translate(svg_string: str, dx: int, dy: int) -> str:
     """
     Translates (moves) an existing SVG element or group by a delta x and y.
     Args:
@@ -365,7 +337,7 @@ def translate_shape(svg_string: str, dx: int, dy: int) -> str:
     return json.dumps({"type": "svg_string", "value": transformed, "explanation": "translated SVG element string."})
 
 @tool
-def scale_shape(svg_string: str, sx: float, sy: Optional[float] = None) -> str:
+def transform_scale(svg_string: str, sx: float, sy: Optional[float] = None) -> str:
     """
     Scales an existing SVG element or group by a factor.
     Args:
@@ -380,7 +352,7 @@ def scale_shape(svg_string: str, sx: float, sy: Optional[float] = None) -> str:
     return json.dumps({"type": "svg_string", "value": transformed, "explanation": "scaled SVG element string."})
 
 @tool
-def rotate_shape(svg_string: str, angle: float, cx: Optional[int] = None, cy: Optional[int] = None) -> str:
+def transform_rotate(svg_string: str, angle: float, cx: Optional[int] = None, cy: Optional[int] = None) -> str:
     """
     Rotates an existing SVG element or group.
     Args:
@@ -413,24 +385,25 @@ DrawCanvasAgentTools = [
     # design_create_plan,
     # design_reflect,
     calculate_path_data_with_math_agent,  
-    translate_shape,
-    scale_shape,
-    rotate_shape,
+    transform_translate,
+    transform_scale,
+    transform_rotate,
+    # design_agent,
     # draw_bezier_segment,
 ]
 
 SYSTEM_PROMPT = """
 # Role
-You are an excellent SVG Drawer. Your role is to interpret semantic user instructions for elements, decompose them into primitive shapes and paths, use tools to generate SVG snippets, and assemble a centered, complete SVG. You should generate SVG content that fits and is centered within the provided canvas dimensions. 
-
+You are an excellent SVG Drawer. Your role is to DESIGN and DRAW SVG content as `user instruction`, within the provided canvas dimensions. If the task is about `design`, you can have to breakdown the semantic meaning and draw step by step.
 # Tools: 
-- `draw`: Draw base shapes or text with `draw` tools. 
-- `calculate`: calculate the PURE DATA of svg path(without format, e.g. "M 9.12 10.2 L 20.110 23.01").  
-    - **descrbe the `task description`**, be careful with the position.
-    - provide (recommended) `coarse_svg_path_data`. 
-    - use `draw_path` tool to render the `path_data` with color and edge. 
-- `transform`: Scale, translate and rotate different elements with your `transform` tools. 
-"""
+- agent as tools:
+    - `calculate_path_data_with_math_agent`: If you need to draw VIVIDLY or draw COMPLEX path/elements, Use your `Math agent` and Give it the `coarse path` or `positions and size`.  Its profile is: MATH_AGENT_PROFILE: 
+    ---------------------------------
+    {MATH_SYSTEM_PROMPT}
+    ---------------------------------
+- `draw_`: Draw base shapes or text with `draw` tools. 
+- `transform_`: Scale, translate and rotate different elements with your `transform` tools. 
+""".format(MATH_SYSTEM_PROMPT=MATH_SYSTEM_PROMPT[100:-100]+'...')
 
 
 DRAW_PROMPT = """
@@ -525,4 +498,4 @@ async def run_draw_agent_with_tool(task_description: str, width: int, height: in
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(run_draw_agent_with_tool("Draw a vivid hand in the middle of the canvas. ", 400, 400))
+    asyncio.run(run_draw_agent_with_tool("""A vibrant, interconnected wireframe globe with glowing nodes and lines, representing a global network. The acronym 'ICSML' is centrally placed within the globe, accompanied by the year '2024'. Below the globe, a stylized architectural gate, potentially referencing the host university, forms a base.""", 400, 400))

@@ -90,7 +90,7 @@ class CanvasAgent(BaseAgent):
         
         # brainstorm agent, image generation agent with tools
         # self.brainstorm_agent = create_react_agent(model=self.init_llm(1.0), tools=[generate_image], prompt=self._system_prompts["brainstorm_prompt"])
-              
+        
         # planner agent, math agent with tools
         self.planner_agent = create_react_agent(model=self.init_llm(), tools=planner_tools, prompt=self._system_prompts["sketch_planner"])
 
@@ -175,7 +175,7 @@ class CanvasAgent(BaseAgent):
                 if chunk.get('messages'):
                     show_messages(chunk.get('messages', []))
                     
-            # final_state = await self.pick_path_agent.ainvoke(agent_input)
+            final_state = await self.pick_path_agent.ainvoke(agent_input)
             show_messages(final_state.get('messages', []))
             picked_path = final_state.get('messages', [])[-1].content
             return {"svg_history": [picked_path], "messages": [HumanMessage(content=prompt), AIMessage(content="Successfull picked path:" + picked_path)]}

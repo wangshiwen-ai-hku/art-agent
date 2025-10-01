@@ -623,6 +623,10 @@ async def calculate_path_data_with_math_agent(task_description: str, coarse_svg_
     logger.info(f"Math agent output saved to {os.path.join(output_dir, output_name)}")
     return svg_code
 
+MATH_AGENT_PROFILE = """
+
+"""
+
 if __name__ == "__main__":
     import asyncio
     asyncio.run(calculate_path_data_with_math_agent("Create a heart.", width=400, height=400))
