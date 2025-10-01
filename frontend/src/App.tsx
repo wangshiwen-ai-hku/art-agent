@@ -1,23 +1,22 @@
 import CanvasComponent from './components/CanvasComponent';
+// import MODE_COLOR from './components/ChatComponent'
 import ChatComponent from './components/ChatComponent';
-// import HistoryBar from './components/HistoryBar';
 
 function App() {
   return (
-    <div className="flex h-screen bg-gray-100 font-sans overflow-hidden">
-      {/* Left side: Canvas and History */}
-    <div className="flex flex-col flex-1">
-        
-        <div className="flex-1 p-4">
-          <CanvasComponent />
-          
-        </div>
-      </div>
-
-      {/* Right side: Chat */}
-      <div className="w-1/3 max-w-md bg-white shadow-lg flex flex-col">
-        <ChatComponent />
-      </div>
+    <div style={{
+      width: '100vw',
+      height: '100vh',
+      background: 'linear-gradient(135deg,rgb(235, 236, 243) 0%,rgb(208, 196, 221) 100%)',
+      position: 'relative',
+      overflow: 'hidden',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    }}>
+      {/* Canvas Component - Left side with fixed positioning */}
+      <CanvasComponent />
+      
+      {/* Chat Component - Right side with fixed positioning */}
+      <ChatComponent />
     </div>
   );
 }

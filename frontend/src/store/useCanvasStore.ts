@@ -7,6 +7,8 @@ export interface BoundingBox {
   height: number;
 }
 
+
+
 interface CanvasState {
   svgHistory: string[];
   currentSvgIndex: number;
