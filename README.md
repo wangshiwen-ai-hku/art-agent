@@ -121,4 +121,4 @@ art-agents/
 5. 后端 Agent 处理后，聊天窗口会显示 AI 的回复和工具使用情况，并且画布上会展示生成的 SVG 图像。
 
 TODO:
-[ ] Context managing
+[ ] Context managing anthropic.com/engineering/effective-context-engineering-for-ai-agents
