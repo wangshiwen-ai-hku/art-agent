@@ -119,3 +119,6 @@ art-agents/
 3. 在聊天框中输入你的设计需求（例如 "为一家咖啡店设计一个logo"），然后发送。
 4. 观察终端和浏览器开发者工具的网络请求，你应该能看到对后端 `http://localhost:8001/api/canvas/chat` 的 POST 请求。
 5. 后端 Agent 处理后，聊天窗口会显示 AI 的回复和工具使用情况，并且画布上会展示生成的 SVG 图像。
+
+TODO:
+[ ] Context managing
