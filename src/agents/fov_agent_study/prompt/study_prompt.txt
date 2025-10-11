@@ -1,6 +1,0 @@
-请先对设计稿件进行构图要素的构思，例如背景底色是什么，正负形状分别可能是什么，占据视觉空间的什么位置。
-
-通常情况下，正形是海报中最醒目的一部分，你需要先根据你的初步构思进行正形元素的生成。负形一般可以通过雕刻形成。`positive_figure_gen_prompt`和`negative_figure_gen_prompt`均需要是**英文图像生成提示词**，直接用于下游的图像生成。
-
-**重要**
-你的`mutual_border_gen_prompt`需要详细指导生图模型在指定位置绘制指定线条，越难绘制的地方越详细，特别是描述`detailed shared/mutual part`。要使用`color`/`part`区分`positive`/`negative`元素对应的`property`。推荐使用`carve`,`shape`,`form`，`silhouette`,`black`，`solid`,`empty`,`void`等描述形状，线条和几何`geometry`使用`from xxx to xxx`, `line`,`curve`，`dot`等描述。风格`style`可以引用一个相似的作家。详细的精确到构图、位置、颜色、形状、长度的生图指令，交给下游生图模型直接生成**边界**。请为图像选取合适的`aspect_ratio`以适应构图和视觉表现力。

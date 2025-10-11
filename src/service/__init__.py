@@ -98,10 +98,7 @@ async def canvas_chat(req: ChatRequest):
     
     update_payload = {
         "user_input": req.message,
-        "conversation": {
-            "messages": current_conversation.get("messages", []),
-            "current_topic": current_conversation.get("current_topic")
-        },
+        "stage": req.stage,
         "workflow": {
             "current_stage": AgentStage(req.stage),
             "current_intent": current_workflow.get("current_intent", UserIntent.CHAT),
@@ -137,9 +134,9 @@ async def canvas_chat(req: ChatRequest):
         last_ai_message = next((m.content for m in reversed(all_messages) if m.type == 'ai'), "Task received. Waiting for next input.")
         
         current_svg_artwork = msg.get("content", {}).get("current_svg")
-        # SvgArtwork 是 Pydantic BaseModel，使用属性访问而不是字典方法
-        latest_svg = current_svg_artwork.svg_code if current_svg_artwork else None
-        tool_outputs = [m.content for m in all_messages if m.type == 'tool']
+        latest_svg = current_svg_artwork.get("svg_code") if current_svg_artwork else None
+        tool_outputs = [m.content for m in all_messages if getattr(m, 'type', '') == 'tool']
+        tool_events = msg.get("content", {}).get("tool_events", [])
 
         # 调试信息
         print(f"📊 API Response Debug:")
@@ -150,7 +147,8 @@ async def canvas_chat(req: ChatRequest):
         return {
             "reply": last_ai_message,
             "svg": latest_svg,
-            "tool_outputs": tool_outputs
+            "tool_outputs": tool_outputs,
+            "tool_events": tool_events,
         }
     except Exception as e:
         import traceback

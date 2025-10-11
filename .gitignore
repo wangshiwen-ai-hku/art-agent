@@ -2,7 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
+discarded
 resource
 apikey.json
 # C extensions

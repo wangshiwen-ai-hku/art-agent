@@ -51,7 +51,7 @@ def generate_image(prompt: str, aspect_ratio: str):
     logger.info("[draw_image_tool] 进入")
     design_prompt = prompt
     ## load multi-modal messages 
-    user_prompt = f"Highly artistic typography, logo, visual arts. no text. {design_prompt}"
+    user_prompt = f" {design_prompt}"
     logger.info(f"[draw_image_tool] 📝 user_prompt: {user_prompt}")
     image = client.models.generate_images(
         model=generation_model,
@@ -65,7 +65,7 @@ def generate_image(prompt: str, aspect_ratio: str):
     
     return image.generated_images[0].image
 
-# @tool
+@tool
 def edit_image_tool(edit_prompt, reference_image):
     """
     params:

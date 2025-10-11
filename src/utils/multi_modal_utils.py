@@ -93,7 +93,7 @@ def convert_pil_to_png_base64(pil_image) -> str:
 
 # ----------------- 使用示例 -----------------
 
-def create_multimodal_message(text: str, image_data: List[str]=[], mm_hint="Here includes images inputs.."):
+def create_multimodal_message(text: str="", image_data: List[str]=[], mm_hint="Here includes images inputs.."):
     contents = []
     if text:
         contents.append({"type": "text", "text": text})

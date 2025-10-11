@@ -1,18 +1,27 @@
 # canvas_tools.py
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 from langchain_core.tools import tool
 import svgwrite
 import math
+from xml.etree import ElementTree as ET
+
 from src.config.manager import config
-# from src.agents.base import BaseAgent
 from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage, BaseMessage
 from dataclasses import asdict
 from langchain.chat_models import init_chat_model
-from .math_tools import math_agent, _init_math_agent, MATH_SYSTEM_PROMPT, MATH_PROMPT, parse_math_agent_response, MATH_AGENT_PROFILE
+
+from .math_tools import (
+    math_agent,
+    _init_math_agent,
+    MATH_SYSTEM_PROMPT,
+    MATH_PROMPT,
+
+    parse_math_agent_response,
+    # MATH_AGENT_PROFILE,
+)
 from .edit_canvas_tools import edit_agent, _init_edit_agent, edit_agent_with_tool
-# from .design_tools import design_agent, DESIGN_SYSTEM_PROMPT, DESIGN_IN_LOOP_PROMPT
 from src.utils.print_utils import show_messages
 import json
 import re, glob
@@ -22,6 +31,48 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 TTF_FILES = glob.glob('resource/*.ttf')
+
+
+def _extract_svg_summary(svg_code: str, limit: int = 10) -> Dict[str, Any]:
+    """Return a lightweight summary of the SVG for downstream agents."""
+    try:
+        root = ET.fromstring(svg_code)
+    except ET.ParseError:
+        return {"elements": [], "error": "invalid_svg"}
+
+    elements: List[Dict[str, Any]] = []
+    for idx, elem in enumerate(root.iter()):
+        if idx >= limit:
+            break
+        tag = elem.tag.split('}')[-1]
+        if tag == "svg":
+            continue
+        snippet = {"tag": tag}
+        if "id" in elem.attrib:
+            snippet["id"] = elem.attrib["id"]
+        if "d" in elem.attrib:
+            snippet["d"] = elem.attrib["d"][:120]
+        elements.append(snippet)
+
+    return {
+        "elements": elements,
+        "element_count": len(list(root.iter())) - 1,
+    }
+
+
+def _collect_tool_events(messages: List[BaseMessage], limit: int = 6) -> List[str]:
+    events: List[str] = []
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            content = message.content
+            if isinstance(content, str):
+                events.append(content[:240])
+            elif isinstance(content, dict):
+                summary = content.get("explanation") or content.get("value") or str(content)
+                events.append(str(summary)[:240])
+        if len(events) >= limit:
+            break
+    return events
 
 @tool
 def draw_text_paths(width: int=400, height: int=400, padding: int=20, text: str = "ICSML", ttf_file: str = "") -> str:
@@ -376,9 +427,10 @@ DrawCanvasAgentTools = [
     draw_rectangle,
     draw_polygon,
     draw_arc,
+    draw_ellipse,
+    # draw_shape
     draw_bezier_curve,
     draw_text_paths,
-    draw_ellipse,
     draw_path,
     # edit_agent_with_tool,
     # Design-level planning and critique tools
@@ -399,11 +451,11 @@ You are an excellent SVG Drawer. Your role is to DESIGN and DRAW SVG content as 
 - agent as tools:
     - `calculate_path_data_with_math_agent`: If you need to draw VIVIDLY or draw COMPLEX path/elements, Use your `Math agent` and Give it the `coarse path` or `positions and size`.  Its profile is: MATH_AGENT_PROFILE: 
     ---------------------------------
-    {MATH_SYSTEM_PROMPT}
+    {MATH_SYSTEM_PRFILE}
     ---------------------------------
 - `draw_`: Draw base shapes or text with `draw` tools. 
 - `transform_`: Scale, translate and rotate different elements with your `transform` tools. 
-""".format(MATH_SYSTEM_PROMPT=MATH_SYSTEM_PROMPT[100:-100]+'...')
+""".format(MATH_SYSTEM_PRFILE=MATH_SYSTEM_PROMPT[100:-100]+'...')
 
 
 DRAW_PROMPT = """
@@ -430,7 +482,13 @@ def is_valid_svg_element(element: str) -> bool:
     return element.startswith('<') and element.endswith('>')
 
 @tool
-async def draw_agent_with_tool(task_description: str, width: int, height: int):
+async def draw_agent_with_tool(
+    task_description: str,
+    width: int,
+    height: int,
+    plan_context: str = "",
+    critique_notes: str = "",
+):
     """
     Draw agent with tool. You can use this tool to draw the svg code of the canvas. You will be given the task description, and your task is the draw the svg code of the canvas.
     Args:
@@ -440,10 +498,28 @@ async def draw_agent_with_tool(task_description: str, width: int, height: int):
     Returns:
         new_svg: str, the entire svg code of the canvas with width and height
     """
-    logger.info(f"🖊 [draw_agent_with_tool] task_description: {task_description}, width: {width}, height: {height}")
+    logger.info(
+        "🖊 [draw_agent_with_tool] task_description=%s width=%s height=%s plan=%s critique=%s",
+        task_description,
+        width,
+        height,
+        bool(plan_context),
+        bool(critique_notes),
+    )
+
+    enriched_prompt = DRAW_PROMPT.format(
+        user_instruction=task_description,
+        width=width,
+        height=height,
+    )
+    if plan_context:
+        enriched_prompt += f"\n---\nDESIGN PLAN\n{plan_context}"
+    if critique_notes:
+        enriched_prompt += f"\n---\nCRITIQUE NOTES\n{critique_notes}"
+
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=DRAW_PROMPT.format(user_instruction=task_description, width=width, height=height))
+        HumanMessage(content=enriched_prompt),
     ]
     state = await draw_agent.ainvoke({"messages": messages})
     show_messages(state.get("messages", []))
@@ -456,15 +532,41 @@ async def draw_agent_with_tool(task_description: str, width: int, height: int):
             if data.get("type") == "svg_string":
                 svg_segments.append(data.get("value"))
     
-    # new_svg = "".join(svg_segments) if svg_segments else messages_list[-1].content
-    new_svg = f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">{"".join(svg_segments)}</svg>'
-    if isinstance(state.get("messages", [])[-1], AIMessage):
-        explanation = "[draw agent] " + state.get("messages", [])[-1].content
-    else:
-        explanation = "[draw agent] draw the svg code of the canvas."
+    new_svg = (
+        f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">'
+        f"{''.join(svg_segments)}</svg>"
+        if svg_segments
+        else ""
+    )
 
-    # Final assembly: ensure the output is always a complete SVG document.
-    return json.dumps({"type": "draw_result", "value": new_svg, "explanation": explanation})
+    final_messages = state.get("messages", [])
+    explanation = "[draw agent]"
+    if final_messages and isinstance(final_messages[-1], AIMessage):
+        explanation = final_messages[-1].content
+
+    if not new_svg:
+        for message in reversed(final_messages):
+            if isinstance(message, (AIMessage, ToolMessage)):
+                content = message.content
+                if isinstance(content, str) and content.strip().startswith("<svg"):
+                    new_svg = content
+                    break
+
+    tool_events = _collect_tool_events(final_messages)
+    summary = _extract_svg_summary(new_svg)
+
+    result_payload = {
+        "type": "draw_result",
+        "svg": new_svg,
+        "value": new_svg,
+        "explanation": explanation,
+        "tool_events": tool_events,
+        "summary": summary,
+        "plan_used": bool(plan_context),
+        "critique_context": critique_notes[:300] if critique_notes else "",
+    }
+
+    return json.dumps(result_payload)
 
 async def run_draw_agent_with_tool(task_description: str, width: int, height: int):
     """
@@ -498,4 +600,4 @@ async def run_draw_agent_with_tool(task_description: str, width: int, height: in
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(run_draw_agent_with_tool("""A vibrant, interconnected wireframe globe with glowing nodes and lines, representing a global network. The acronym 'ICSML' is centrally placed within the globe, accompanied by the year '2024'. Below the globe, a stylized architectural gate, potentially referencing the host university, forms a base.""", 400, 400))
+    asyncio.run(run_draw_agent_with_tool("""""", 400, 400))

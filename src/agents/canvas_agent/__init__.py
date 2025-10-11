@@ -1,12 +1,5 @@
-"""
-Sketch agent module.
+"""Compatibility layer re-exporting the service canvas agent implementation."""
 
-This module provides the SketchAgent class which is a multi-agent system
-with sketch capabilities for reasoning, planning and execution.
-"""
+from src.service.canvas_agent import CanvasAgent, CanvasState, ThreadConfiguration
 
-from .graph import CanvasAgent
-from .config import ThreadConfiguration
-from .schema import CanvasState
-
-__all__ = ["CanvasAgent", "ThreadConfiguration", "CanvasState"]
+__all__ = ["CanvasAgent", "CanvasState", "ThreadConfiguration"]

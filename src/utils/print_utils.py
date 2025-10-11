@@ -6,7 +6,7 @@ import base64
 from typing import List
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 
-def show_messages(update: List[BaseMessage], limit: int = 1200):
+def show_messages(update: List[BaseMessage], limit: int = 2000, num=2):
     # 颜色定义
     COLORS = {
         'reset': '\033[0m',
@@ -17,7 +17,8 @@ def show_messages(update: List[BaseMessage], limit: int = 1200):
         'metadata': '\033[90m',   # 灰色
         'separator': '\033[95m',  # 紫色
     }
-    
+    update = update[-num:]
+
     def color_text(text, color_key):
         return f"{COLORS[color_key]}{text}{COLORS['reset']}"
     

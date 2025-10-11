@@ -1,19 +1,27 @@
 # canvas_tools.py
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict, Any
 from langchain_core.tools import tool
 import svgwrite
 import re
 import json
 import os
 import uuid
+from xml.etree import ElementTree as ET
+
 from src.config.manager import config
 from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage, BaseMessage
 from dataclasses import asdict
 from langchain.chat_models import init_chat_model
 from src.utils.print_utils import show_messages
-from .math_tools import math_agent, _init_math_agent, MATH_SYSTEM_PROMPT, MATH_PROMPT, parse_math_agent_response  # Assuming parse_math_agent_response is defined in math_tools.py
+from .math_tools import (
+    math_agent,
+    _init_math_agent,
+    MATH_SYSTEM_PROMPT,
+    MATH_PROMPT,
+    parse_math_agent_response,
+)  # Assuming parse_math_agent_response is defined in math_tools.py
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -239,21 +247,26 @@ EditCanvasAgentTools = [
 
 SYSTEM_PROMPT = """
 # Role
-You are an excellent SVG Editor. Your role is to interpret semantic user instructions for edits, decompose them into modifications (add, modify, remove), use tools to update SVG snippets, and assemble a refined, complete SVG. You should ensure edits fit and are centered within the existing canvas dimensions.
+You are an expert SVG editor. Interpret semantic edit requests, reference the existing design plan and critique notes when provided, and return a cohesive, production-ready SVG. Maintain geometry fidelity, respect canvas bounds, and document the operations you perform.
 
-# Tools: 
-- `add`: Add new shapes or elements with `add_` tools. 
-- `modify`: Change existing elements with `modify_` tools.
-- `remove`: Remove elements with `remove_` tools.
-- `calculate`: Calculate the PURE DATA of SVG path (without format, e.g. "M 9.12 10.2 L 20.110 23.01").  
-    - Describe the `task description`, be careful with the position.
-    - Provide (recommended) `coarse_svg_path_data`. 
-    - Use `modify_path` tool to apply the `path_data` with color and edge. or  Use `add_path` tool to add the `path_data` with color and edge. 
+# Tools
+- `add_` tools: introduce new shapes or text blocks.
+- `modify_` tools: adjust attributes/path data of existing elements.
+- `remove_` tools: delete elements by index/type.
+- `calculate_path_data_with_math_agent`: derive precise path instructions (e.g., bezier adjustments). Supply clear targets and reuse results via `modify_path` or `add_path`.
+
+# Expectations
+- Produce deterministic edits—no randomness.
+- Reference targeted element ids or indices when possible.
+- Return a complete `<svg>` document and a concise change log.
 """
 
 EDIT_PROMPT = """
 user_instruction: {user_instruction}
 original_svg_code: {original_svg_code}
+revision_notes: {revision_notes}
+target_elements: {target_elements}
+plan_context: {plan_context}
 """
 
 edit_agent = None
@@ -270,7 +283,13 @@ def _init_edit_agent():
 edit_agent = _init_edit_agent()
 
 @tool
-async def edit_agent_with_tool(task_description: str, original_svg_code: str):
+async def edit_agent_with_tool(
+    task_description: str,
+    original_svg_code: str,
+    revision_notes: str = "",
+    target_elements: str = "",
+    plan_context: str = "",
+):
     """
     Edit agent with tool. You can use this tool to edit the SVG code of the canvas. You will be given the task description and original SVG code, and your task is to edit the SVG code.
     Args:
@@ -279,12 +298,24 @@ async def edit_agent_with_tool(task_description: str, original_svg_code: str):
     Returns:
         new_svg: str, the entire updated SVG code
     """
-    logger.info(f"🖊 [agent_with_tool] task_description: {task_description}")
+    logger.info(
+        "🖊 [edit_agent_with_tool] task_description=%s revision_notes=%s plan=%s",
+        task_description,
+        bool(revision_notes),
+        bool(plan_context),
+    )
+    prompt = EDIT_PROMPT.format(
+        user_instruction=task_description,
+        original_svg_code=original_svg_code,
+        revision_notes=revision_notes or "",
+        target_elements=target_elements or "",
+        plan_context=plan_context or "",
+    )
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=EDIT_PROMPT.format(user_instruction=task_description, original_svg_code=original_svg_code))
+        HumanMessage(content=prompt),
     ]
-    state = await agent.ainvoke({"messages": messages})
+    state = await agent.ainvoke({"messages": messages}, {"recursion_limit": 100})
     show_messages(state.get("messages", []))
 
     # Fallback to assembling from tool calls if the final message is not a complete SVG.
@@ -295,24 +326,61 @@ async def edit_agent_with_tool(task_description: str, original_svg_code: str):
             if data.get("type") == "svg_string":
                 svg_segments.append(data.get("value"))  # But actually, tools return full updated SVG, so last one is final
 
-    # Use the last updated SVG from tools, or fallback to AI message
-    new_svg = svg_segments[-1] if svg_segments else state.get("messages", [])[-1].content
-    if isinstance(state.get("messages", [])[-1], AIMessage):
-        explanation = "[edit agent] " + state.get("messages", [])[-1].content
-    else:
-        explanation = "[edit agent] edited the SVG code of the canvas."
+    final_messages = state.get("messages", [])
+    new_svg = svg_segments[-1] if svg_segments else ""
+    if not new_svg:
+        for message in reversed(final_messages):
+            if isinstance(message, (AIMessage, ToolMessage)):
+                content = message.content
+                if isinstance(content, str) and content.strip().startswith("<svg"):
+                    new_svg = content
+                    break
+                if isinstance(content, dict) and content.get("value", "").startswith("<svg"):
+                    new_svg = content["value"]
+                    break
 
-    return json.dumps({"type": "result", "value": new_svg, "explanation": explanation})
+    explanation = "[edit agent]"
+    if final_messages and isinstance(final_messages[-1], AIMessage):
+        explanation = final_messages[-1].content
+
+    tool_events = _collect_tool_events(final_messages)
+    summary = _summarize_svg(new_svg) if new_svg else {"elements": []}
+
+    result_payload = {
+        "type": "edit_result",
+        "svg": new_svg,
+        "value": new_svg,
+        "explanation": explanation,
+        "tool_events": tool_events,
+        "summary": summary,
+        "revision_notes": revision_notes[:300] if revision_notes else "",
+        "target_elements": target_elements,
+        "plan_used": bool(plan_context),
+    }
+
+    return json.dumps(result_payload)
 
 async def run_agent_with_tool(task_description: str, original_svg_code: str):
     """
     Run edit agent with tool for testing. Edits the SVG code based on the task description.
     """
     logger.info(f"🖊 [run_agent_with_tool] task_description: {task_description}")
-    messages = {"messages": [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=EDIT_PROMPT.format(user_instruction=task_description, original_svg_code=original_svg_code) + "After your execution, please give me some feedback on your tools, are they useful? What other tools do you want? And specify the math tools you want to use, comment on the current math tools you used, is it useful?")
-    ]}
+    messages = {
+        "messages": [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(
+                content=
+                EDIT_PROMPT.format(
+                    user_instruction=task_description,
+                    original_svg_code=original_svg_code,
+                    revision_notes="make improvements for highlights",
+                    target_elements="",
+                    plan_context="",
+                )
+                + "After your execution, please give me some feedback on your tools, are they useful?"
+            ),
+        ]
+    }
     state = await agent.ainvoke(messages)
     show_messages(state.get("messages", []), limit=-1)
     messages_list = state.get("messages", [])
@@ -338,3 +406,38 @@ if __name__ == "__main__":
     original_svg = '<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg"><rect fill="lightgray" height="100" stroke="black" width="100" x="165" y="180" /><rect fill="lightgray" height="60" stroke="black" width="20" x="170" y="120" /><rect fill="lightgray" height="60" stroke="black" width="20" x="195" y="120" /><rect fill="lightgray" height="60" stroke="black" width="20" x="220" y="120" /><rect fill="lightgray" height="60" stroke="black" width="20" x="245" y="120" /><rect fill="lightgray" height="50" stroke="black" width="30" x="135" y="205" /></svg>'
     task = "Make this hand more vivid and colorful."
     asyncio.run(run_agent_with_tool(task, original_svg))
+def _summarize_svg(svg_code: str, limit: int = 10) -> Dict[str, Any]:
+    try:
+        root = ET.fromstring(svg_code)
+    except ET.ParseError:
+        return {"elements": [], "error": "invalid_svg"}
+
+    elements: List[Dict[str, Any]] = []
+    for idx, elem in enumerate(root.iter()):
+        if idx >= limit:
+            break
+        tag = elem.tag.split('}')[-1]
+        if tag == "svg":
+            continue
+        record: Dict[str, Any] = {"tag": tag}
+        if "id" in elem.attrib:
+            record["id"] = elem.attrib["id"]
+        if "d" in elem.attrib:
+            record["d"] = elem.attrib["d"][:120]
+        elements.append(record)
+    return {"elements": elements, "element_count": len(elements)}
+
+
+def _collect_tool_events(messages: List[BaseMessage], limit: int = 6) -> List[str]:
+    events: List[str] = []
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            content = message.content
+            if isinstance(content, str):
+                events.append(content[:240])
+            elif isinstance(content, dict):
+                summary = content.get("explanation") or content.get("value") or str(content)
+                events.append(str(summary)[:240])
+        if len(events) >= limit:
+            break
+    return events

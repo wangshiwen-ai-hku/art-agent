@@ -1,17 +1,6 @@
-# Completely rewritten math_tools.py
-# Changes:
-# - Rewrote the entire tool system following Claude Code golden rules: Focused on a few accurate, powerful tools with distinct purposes to handle ALL calculation tasks for SVG paths (e.g., deciding Bezier segments, endpoints, types C/Q/T/S, control points).
-#   - Chosen right tools: Only 5 tools total (2 design_, 2 function_, 1 auxiliary_), non-overlapping, high-impact for Bezier decisions and path complexity. Avoided redundancy (e.g., no separate line/arc tools; consolidated into intersections and transformations).
-#     - design_: For symmetry and transformations to infer endpoints/control points (e.g., symmetric controls for balanced curves).
-#     - function_: For curve sampling and fitting to generate/optimize points (e.g., sigmoid for smooth transitions).
-#     - auxiliary_: Single tool for intersections to aid positioning without overlap.
-#   - Namespacing: Used prefixes (design_, function_, auxiliary_) to group and delineate boundaries.
-#   - Meaningful context: Tools return JSON with "result" (e.g., points or params), "explanation" (natural language summary), "error". Added response_format enum ("concise" or "detailed") for flexibility.
-#   - Token efficiency: Limited outputs (e.g., default num_points=20); concise mode omits explanation. Helpful errors guide retries.
-#   - Prompt-engineering: Descriptions explain like to a new hire, with examples, strict inputs/outputs. Tools enable human-like subdivision (e.g., intersect to find endpoint, then fit Bezier).
-# - Updated MATH_SYSTEM_PROMPT: Guides agent to use tools for Bezier decisions (e.g., infer type from points, choose controls via symmetry/functions).
-# - Kept agent structure but emphasized ReAct for iteration if invalid.
+"""math_tools.py
 
+"""
 import subprocess
 from langchain_core.tools import tool
 from src.config.manager import config
@@ -602,26 +591,51 @@ def _init_math_agent():
 
 math_agent = _init_math_agent()
 
-async def calculate_path_data_with_math_agent(task_description: str, coarse_svg_path_data: Optional[str] = None, other_info: Optional[str] = None, width: Optional[int] = None, height: Optional[int] = None) -> str:
-    """
-    Calculate the path data with math agent.
-    """
+async def calculate_path_data_with_math_agent(
+    task_description: str,
+    coarse_svg_path_data: Optional[str] = None,
+    other_info: Optional[str] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    plan_context: str = "",
+) -> str:
+    """Direct math-agent access that returns structured JSON for downstream tools."""
+
     math_agent = _init_math_agent()
+    enriched_prompt = MATH_PROMPT.format(
+        user_instruction=task_description,
+        coarse_svg_path_data=coarse_svg_path_data,
+        other_info=other_info,
+        width=width,
+        height=height,
+    )
+    if plan_context:
+        enriched_prompt += f"\nPLAN CONTEXT:\n{plan_context}"
+
     messages = [
         SystemMessage(content=MATH_SYSTEM_PROMPT),
-        HumanMessage(content=MATH_PROMPT.format(user_instruction=task_description, coarse_svg_path_data=coarse_svg_path_data, other_info=other_info, width=width, height=height))
+        HumanMessage(content=enriched_prompt),
     ]
     state = await math_agent.ainvoke({"messages": messages})
     show_messages(state.get("messages", []), -1)
     data = parse_math_agent_response(state)
-    svg_code = f"<svg width='{width}' height='{height}' xmlns='http://www.w3.org/2000/svg'><path d='{data.data}' /></svg>"
-    output_dir = 'output/test_math'
-    os.makedirs(output_dir, exist_ok=True)
-    output_name = f"math_agent_output_{time.strftime('%Y%m%d_%H%M%S')}.svg"
-    with open(os.path.join(output_dir, output_name), "w", encoding="utf-8") as f:
-        f.write(svg_code)
-    logger.info(f"Math agent output saved to {os.path.join(output_dir, output_name)}")
-    return svg_code
+
+    svg_preview = None
+    if width and height and data.data:
+        svg_preview = (
+            f"<svg width='{width}' height='{height}' xmlns='http://www.w3.org/2000/svg'>"
+            f"<path d='{data.data}' fill='none' stroke='black'/></svg>"
+        )
+
+    result_payload = {
+        "type": "path_data",
+        "path_data": data.data,
+        "value": data.data,
+        "explanation": data.explanation,
+        "svg_preview": svg_preview,
+    }
+
+    return json.dumps(result_payload)
 
 MATH_AGENT_PROFILE = """
 
