@@ -610,9 +610,10 @@ async def summarize_node(state, config=None):
         update = {
             "summarize_map": llm_output_dict,
             "messages": new_messages,
-            "stage": next_step,
+            "stage": StageEnum.END,
             "stage_iteration": state.get('stage_iteration', 0) + 1,
         }
+        
         try:
             if note_helper is not None:
                 _ = await note_helper.do_notes(state.get('messages', []) + new_messages)
@@ -1040,6 +1041,9 @@ def router_node(state, config=None):
 def route_logic(state):
     """Synchronous routing logic to determine the next node."""
     logger.info(f"-> Route logic: {state.get('stage')}")
+    if state.get('stage') == StageEnum.END:
+        return END
+        
     if state.get('stage_iteration', 0) > 10 or len(state.get('generated_image_paths', [])) >= 4:
         return "summarize"
     
@@ -1047,8 +1051,8 @@ def route_logic(state):
         return "preview_image"
     
     if len(state.get('short_memorys', [])) >= 3:
-        return "update_memory"
-
+        return "update_memory_node"
+    
     if state.get('reflect_map_messages'):
         latest_reflect = state['reflect_map_messages'][-1]
         if latest_reflect.get('overall_score', 10) < 5:
@@ -1060,7 +1064,7 @@ def route_logic(state):
         if latest_reflect.get('overall_score', 10) >= 8:
             return "summarize"
 
-    stage = state.get('stage', StageEnum.END)
+    stage = state.get('stage', StageEnum.PLAN)
 
     if isinstance(stage, StageEnum):
         stage = stage.value
@@ -1069,7 +1073,7 @@ def route_logic(state):
     # `route_logic` to return the *stage key* (e.g. 'compose', 'brainstorm'),
     # not the node id. Return the stage key when known, otherwise fall back to
     # the 'reflect' stage or END.
-    if stage == StageEnum.END.value:
+    if stage == StageEnum.END:
         return END
     if stage in NODE_MAP:
         return stage
@@ -1323,7 +1327,7 @@ if __name__ == "__main__":
         "clarity": "Visual clarity and readability",
         "versatility": "Adaptability across different media"
     }
-    asyncio.run(run_agent_with_tool("老虎和H 设计一个logo, 老虎使用字母变形来抽象化", 400, 400, reflect_dimensions=custom_dimensions))
+    asyncio.run(run_agent_with_tool("我希望建立一个app，为这个app设计一个logo。名字为”psycho“。关注于具有心理疾病或者精神问题的人，给他们提供一个新的社交平台，, 目的是凸显这些小众群体的个性，给我设计一个简洁的，令人印象深刻的app logo。\n 简约线条，使用字母变形为核心", 400, 400, reflect_dimensions=custom_dimensions))
 
 
 @tool
