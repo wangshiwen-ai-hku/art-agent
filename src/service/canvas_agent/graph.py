@@ -97,8 +97,9 @@ class CanvasAgent(BaseAgent):
             
             # Add image data if present
             image_contents = []
-            if state["content"]["reference_images"]:
-                for image_path in state["content"]["reference_images"]:
+            reference_images = state.get("content", {}).get("reference_images", [])
+            if reference_images:
+                for image_path in reference_images:
                     with open(image_path, "rb") as image_file:
                         encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
                     image_contents.append(
@@ -121,10 +122,43 @@ class CanvasAgent(BaseAgent):
 
             # Extract the last valid SVG from tool messages
             new_svg_code = None
-            for message in reversed(final_messages):
-                if (isinstance(message, AIMessage) or isinstance(message, ToolMessage)) and message.content.strip().startswith('<svg'):
-                    new_svg_code = message.content
-                    break
+            logger.info(f"-> Checking {len(final_messages)} messages for SVG content")
+            for i, message in enumerate(reversed(final_messages)):
+                logger.info(f"-> Message {i}: type={type(message).__name__}, content preview={str(message.content)[:100]}")
+                if isinstance(message, ToolMessage):
+                    content = str(message.content).strip()
+                    
+                    # 尝试解析 JSON 格式的工具输出
+                    try:
+                        import json
+                        data = json.loads(content)
+                        if data.get("type") in ["draw_result", "edit_result"] and data.get("value"):
+                            new_svg_code = data.get("value")
+                            logger.info(f"-> Found SVG in JSON tool output, length={len(new_svg_code)}")
+                            break
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                    
+                    # 如果不是JSON，尝试直接查找SVG
+                    if content.startswith('<svg'):
+                        new_svg_code = content
+                        logger.info(f"-> Found raw SVG in message {i}, length={len(new_svg_code)}")
+                        break
+                    elif '<svg' in content:
+                        # 尝试提取包含在其他文本中的SVG
+                        import re
+                        svg_match = re.search(r'(<svg[^>]*>.*?</svg>)', content, re.DOTALL)
+                        if svg_match:
+                            new_svg_code = svg_match.group(1)
+                            logger.info(f"-> Extracted SVG from message {i}, length={len(new_svg_code)}")
+                            break
+                            
+                elif isinstance(message, AIMessage):
+                    content = str(message.content).strip()
+                    if content.startswith('<svg'):
+                        new_svg_code = content
+                        logger.info(f"-> Found SVG in AI message {i}, length={len(new_svg_code)}")
+                        break
             
             if new_svg_code:
                 new_svg = SvgArtwork(svg_code=new_svg_code, elements=[]) # Elements can be parsed if needed
@@ -135,14 +169,21 @@ class CanvasAgent(BaseAgent):
                 if state["project"]["project_dir"]:
                     import time
                     timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    svg_path = os.path.join(
-                        state["project"]["project_dir"], f"artwork_{timestamp}.svg"
-                    )
-                    with open(svg_path, "w", encoding="utf-8") as f:
-                        f.write(new_svg_code)
-                    png_path = svg_to_png(svg_path)
-                    logger.info(f"-> Saved artwork to {svg_path} and PNG to {png_path}")
-                    state["project"]["saved_files"].append(png_path)
+                    
+                    # 确保输出目录存在
+                    output_dir = state["project"]["project_dir"]
+                    os.makedirs(output_dir, exist_ok=True)
+                    
+                    svg_path = os.path.join(output_dir, f"artwork_{timestamp}.svg")
+                    
+                    try:
+                        with open(svg_path, "w", encoding="utf-8") as f:
+                            f.write(new_svg_code)
+                        png_path = svg_to_png(svg_path)
+                        logger.info(f"-> Saved artwork to {svg_path} and PNG to {png_path}")
+                        state["project"]["saved_files"].append(png_path)
+                    except Exception as save_error:
+                        logger.warning(f"-> Failed to save artwork: {save_error}")
             
             return state
 

@@ -31,10 +31,12 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   selectionBox: null,
   
   addSvg: (svg) => set((state) => {
+    console.log('📝 Store: Adding SVG to history, length:', svg.length);
     const newHistory = state.svgHistory.slice(0, state.currentSvgIndex + 1);
     newHistory.push(svg);
     // Enforce a maximum of 10 items in history
     const limitedHistory = newHistory.slice(Math.max(0, newHistory.length - 10));
+    console.log('📝 Store: New history length:', limitedHistory.length, 'Current index:', limitedHistory.length - 1);
     return { 
       svgHistory: limitedHistory,
       currentSvgIndex: limitedHistory.length - 1,

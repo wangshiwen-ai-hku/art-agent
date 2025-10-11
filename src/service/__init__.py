@@ -14,7 +14,7 @@ import tempfile
 import base64
 from .canvas_agent.utils import svg_to_png
 import os
-from .canvas_agent.schema import create_initial_state, AgentStage
+from .canvas_agent.schema import create_initial_state, AgentStage, UserIntent
 
 # Global agent instance
 agent_instance: CanvasAgent | None = None
@@ -89,12 +89,33 @@ async def canvas_chat(req: ChatRequest):
     current_state = await agent_instance.compiled_graph.aget_state(thread_config)
 
     # We need to map the flat request to the nested state
+    # 获取当前状态，如果不存在则使用默认值
+    current_values = current_state.values if current_state else {}
+    current_content = current_values.get("content", {})
+    current_conversation = current_values.get("conversation", {})
+    current_project = current_values.get("project", {})
+    current_workflow = current_values.get("workflow", {})
+    
     update_payload = {
         "user_input": req.message,
+        "conversation": {
+            "messages": current_conversation.get("messages", []),
+            "current_topic": current_conversation.get("current_topic")
+        },
         "workflow": {
             "current_stage": AgentStage(req.stage),
+            "current_intent": current_workflow.get("current_intent", UserIntent.CHAT),
+            "is_completed": current_workflow.get("is_completed", False)
         },
-        "content": {}
+        "content": {
+            "current_svg": current_content.get("current_svg"),
+            "svg_history": current_content.get("svg_history", []),
+            "reference_images": current_content.get("reference_images", [])
+        },
+        "project": {
+            "project_dir": current_project.get("project_dir"),
+            "saved_files": current_project.get("saved_files", [])
+        }
     }
     
     # If an SVG is provided in the request, update the history.
@@ -116,8 +137,15 @@ async def canvas_chat(req: ChatRequest):
         last_ai_message = next((m.content for m in reversed(all_messages) if m.type == 'ai'), "Task received. Waiting for next input.")
         
         current_svg_artwork = msg.get("content", {}).get("current_svg")
-        latest_svg = current_svg_artwork.get("svg_code") if current_svg_artwork else None
+        # SvgArtwork 是 Pydantic BaseModel，使用属性访问而不是字典方法
+        latest_svg = current_svg_artwork.svg_code if current_svg_artwork else None
         tool_outputs = [m.content for m in all_messages if m.type == 'tool']
+
+        # 调试信息
+        print(f"📊 API Response Debug:")
+        print(f"  - Current SVG artwork: {current_svg_artwork}")
+        print(f"  - Latest SVG length: {len(latest_svg) if latest_svg else 0}")
+        print(f"  - Reply length: {len(last_ai_message) if last_ai_message else 0}")
 
         return {
             "reply": last_ai_message,

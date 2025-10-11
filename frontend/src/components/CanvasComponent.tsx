@@ -477,14 +477,19 @@ const CanvasComponent: React.FC = () => {
   // Load SVG from state
   useEffect(() => {
     const canvas = fabricCanvasRef.current;
+    console.log('🖼️ Canvas: SVG history changed. History length:', svgHistory.length, 'Current index:', currentSvgIndex);
     if (canvas) {
       const svg = svgHistory[currentSvgIndex];
       if (svg) {
+        console.log('🖼️ Canvas: Loading SVG, length:', svg.length);
         loadSvgToCanvas(canvas, svg);
       } else {
+        console.log('🖼️ Canvas: No SVG at current index, clearing canvas');
         canvas.clear();
         canvas.renderAll();
       }
+    } else {
+      console.warn('🖼️ Canvas: Fabric canvas not initialized');
     }
   }, [svgHistory, currentSvgIndex]);
 
