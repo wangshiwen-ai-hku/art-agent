@@ -564,7 +564,7 @@ async def summarize_node(state, config=None):
         prompt = (
             "Produce a  `draw_description` detailed, path level, concise, suitable for SVG LOGO generation and "
             "a short `design_idea` summarizing the innovation, concept. Return both fields."
-            "collect the latest image url as `image_url`"
+            "collect the latest image_preview_url as `image_preview_url`, this is a path-like string"
         )
         if not state.get('generated_image_paths'):
             return {

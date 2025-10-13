@@ -7,8 +7,7 @@ export interface BoundingBox {
   height: number;
 }
 
-
-
+// all functionso in interface
 interface CanvasState {
   svgHistory: string[];
   currentSvgIndex: number;
@@ -22,8 +21,10 @@ interface CanvasState {
   undo: () => void;
   redo: () => void;
   updateSvg: (index: number, newSvg: string) => void; // 新增的方法
+  // addPng: (png: string) => void;
 }
 
+// define all functions in interface
 export const useCanvasStore = create<CanvasState>((set) => ({
   svgHistory: [],
   currentSvgIndex: -1,
@@ -43,6 +44,9 @@ export const useCanvasStore = create<CanvasState>((set) => ({
      };
   }),
 
+  // add png to state
+  // addPng: (png) => set((state) => ({ pngHistory: [...state.pngHistory, png] })),
+  
   setCurrentSvgIndex: (index) => set({ currentSvgIndex: index }),
 
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),

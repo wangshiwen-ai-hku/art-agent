@@ -112,5 +112,28 @@ art-agents/
 4. 观察终端和浏览器开发者工具的网络请求，你应该能看到对后端 `http://localhost:8001/api/canvas/chat` 的 POST 请求。
 5. 后端 Agent 处理后，聊天窗口会显示 AI 的回复和工具使用情况，并且画布上会展示生成的 SVG 图像。
 
-TODO:
-[ ] Context managing anthropic.com/engineering/effective-context-engineering-for-ai-agents
+## agent后端开发
+
+```python
+python -m src.infra.tools.draw_canvas_tools
+# python -m src.infra.tools.xxxx_tools
+```
+
+### ROADMAP
+1. [ ] design_general_agent & draw_canvas_agent 前后端接入 
+   - `services/canvas_agent/graph.py`
+      - router 逻辑, stage 需要次要 优先根据user的intent来路由
+      - tool_agent 返回结果 主要node是 draw_node & generate_image_node
+      - tool_agent 返回结果提取到主图 state `services/canvas_agent/schema.py`
+   - `services/__init__.py`
+      - 交互信息 提取png svg
+   - `frontend/src/components/Canvas....` `frontend/src/components/Chat....`
+      - 加入png的渲染和更新
+
+2. agent后端开发
+   - ```python
+         python -m src.infra.tools.draw_canvas_tools
+      # python -m src.infra.tools.xxxx_tools
+      ```
+   - math agent with tools !
+   - `src/infra/tools/GEMINI.md`

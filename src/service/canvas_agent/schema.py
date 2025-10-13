@@ -8,17 +8,16 @@ class AgentStage(str, Enum):
     PLAN = "plan"
     DRAW = "draw"
     EDIT = "edit"
-    CRITIQUE = "critique"
-    DESCRIBE = "describe"
-    PICK_PATH = "pick"
     GENERATE_IMAGE = "generate"
 
+# ==== 解析全部可能的用户意图 ====
 class UserIntent(str, Enum):
-    CREATE = "create"      # 创建新图形
-    MODIFY = "modify"      # 修改现有图形
-    ANALYZE = "analyze"    # 分析描述图形
-    SELECT = "select"      # 选择路径
+    # CREATE = "create"      # 创建新图形
+    # ANALYZE = "analyze"    # 分析描述图形
+    # SELECT = "select"      # 选择路径
     CHAT = "chat"          # 普通对话
+    DRAW = 'draw'           # 画一个新图
+    MODIFY = "modify"      # 修改现有图形
     DESIGN = "design_image"      # routed to design general agent (design branch)
 
 class Router(BaseModel):
@@ -180,11 +179,11 @@ def extract_svg_elements(svg_code: str) -> List[str]:
 # === 状态映射（简化版）===
 STATE_MAP = {
     UserIntent.CHAT: "chat_node",
-    UserIntent.CREATE: "plan_node", 
+    # UserIntent.CREATE: "plan_node", 
     UserIntent.DESIGN: "design_image_node",
     UserIntent.MODIFY: "edit_node",
-    UserIntent.ANALYZE: "describe_node",
-    UserIntent.SELECT: "pick_path_node"
+    # UserIntent.ANALYZE: "describe_node",
+    # UserIntent.SELECT: "pick_path_node"
 }
 
 AGENT_STAGE_MAP = {
@@ -192,17 +191,18 @@ AGENT_STAGE_MAP = {
     AgentStage.PLAN: "plan_node",
     AgentStage.DRAW: "draw_node",
     AgentStage.EDIT: "edit_node", 
-    AgentStage.CRITIQUE: "critique_node",
-    AgentStage.DESCRIBE: "describe_node",
-    AgentStage.PICK_PATH: "pick_path_node",
+    # AgentStage.CRITIQUE: "critique_node",
+    # AgentStage.DESCRIBE: "describe_node",
+    # AgentStage.PICK_PATH: "pick_path_node",
     AgentStage.GENERATE_IMAGE: "design_image_node"
 }
 
 INTENT_TO_STAGE = {
     UserIntent.CHAT: AgentStage.CHAT,
-    UserIntent.CREATE: AgentStage.PLAN,
+    # UserIntent.CREATE: AgentStage.PLAN,
     UserIntent.MODIFY: AgentStage.EDIT,
-    UserIntent.ANALYZE: AgentStage.DESCRIBE,
-    UserIntent.SELECT: AgentStage.PICK_PATH,
+    # UserIntent.ANALYZE: AgentStage.DESCRIBE,
+    # UserIntent.SELECT: AgentStage.PICK_PATH,
+    UserIntent.DRAW: AgentStage.DRAW,
     UserIntent.DESIGN: AgentStage.GENERATE_IMAGE,
 }

@@ -95,7 +95,17 @@ async def canvas_chat(req: ChatRequest):
     current_conversation = current_values.get("conversation", {})
     current_project = current_values.get("project", {})
     current_workflow = current_values.get("workflow", {})
-    
+
+    """
+    1. frontend send payload to backend
+    const payload = {
+        message: content, // hello
+        stage: currentStage, // chat design ...
+        svg: uploadedSvg, // svg 
+      };
+    """
+
+    # 2. backend update payload -> graph
     update_payload = {
         "user_input": req.message,
         "stage": req.stage,
@@ -128,11 +138,14 @@ async def canvas_chat(req: ChatRequest):
 
     try:
         # ainvoke will use the checkpointer that was configured and kept alive at startup
+        # 3. graph update payload -> backend response
         msg = await agent_instance.compiled_graph.ainvoke(Command(resume=update_payload), config=thread_config)
         
         all_messages = msg.get("conversation", {}).get("messages", [])
         last_ai_message = next((m.content for m in reversed(all_messages) if m.type == 'ai'), "Task received. Waiting for next input.")
         
+        image_url = msg.get("content", {}).get("image_url")
+
         current_svg_artwork = msg.get("content", {}).get("current_svg")
         latest_svg = current_svg_artwork.get("svg_code") if current_svg_artwork else None
         tool_outputs = [m.content for m in all_messages if getattr(m, 'type', '') == 'tool']
@@ -144,12 +157,17 @@ async def canvas_chat(req: ChatRequest):
         print(f"  - Latest SVG length: {len(latest_svg) if latest_svg else 0}")
         print(f"  - Reply length: {len(last_ai_message) if last_ai_message else 0}")
 
+        # 4. backend response -> frontend
         return {
-            "reply": last_ai_message,
-            "svg": latest_svg,
+
+            "reply": last_ai_message, # ai: hello I'm canvas agent
+            "svg": latest_svg, # svg
+            "png": image_url, # png
+
             "tool_outputs": tool_outputs,
             "tool_events": tool_events,
         }
+
     except Exception as e:
         import traceback
         traceback.print_exc()

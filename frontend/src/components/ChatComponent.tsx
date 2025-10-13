@@ -100,9 +100,9 @@ const ChatComponent: React.FC = () => {
     setIsLoading(true);
     try {
       const payload = {
-        message: content,
-        stage: currentStage,
-        svg: uploadedSvg,
+        message: content, // hello
+        stage: currentStage, // chat design ...
+        svg: uploadedSvg, // svg 
       };
 
       const res = await fetch('http://localhost:8001/api/canvas/chat', {
@@ -124,14 +124,21 @@ const ChatComponent: React.FC = () => {
         if (data.reply) {
           addMessage({ 
             author: 'agent', 
-            content: data.reply
+            content: data.reply // ai: hello I'm canvas agent
           });
         }
         if (data.svg) {
           console.log('🎨 Adding SVG to canvas, length:', data.svg.length);
-          addSvg(data.svg);
+          addSvg(data.svg); // svg 
         } else {
           console.warn('⚠️ No SVG in response');
+        }
+        if (data.png) {
+          console.log('🎨 Adding PNG to canvas, length:', data.png.length);
+          // addMessage({ 
+          //   author: 'agent', 
+          //   content: data.png // png 
+          // });
         }
         // 工具输出仅用于调试，不显示在聊天界面中
         if (data.tool_outputs && data.tool_outputs.length > 0) {
