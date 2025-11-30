@@ -1,0 +1,19 @@
+{
+  "design_prompt": "一个现代、简洁、专业的科技公司logo。设计应融合几何图形（如三角形、圆形、六边形等）和抽象的字母元素，共同构成一个独特且易于识别的标志。整体风格应体现科技感和创新性，线条流畅、构图平衡。色彩方案建议采用冷静且专业的色调，例如蓝色、灰色或深绿，并可加入少量鲜明对比色作为点缀，以增加视觉吸引力。避免复杂的渐变和纹理，强调扁平化设计和清晰的视觉层次。",
+  "image_prompt": "Modern minimalist tech company logo, geometric shapes, abstract letter elements, clean lines, professional, sleek, vector art, flat design, cool color palette, high resolution, white background",
+  "instruction": {
+    "intention": "一个科技公司logo",
+    "criteria": [
+      "现代感",
+      "简洁明了",
+      "专业性",
+      "包含几何图形",
+      "包含字母元素",
+      "构图平衡",
+      "色彩协调"
+    ]
+  },
+  "messages": [
+    "content='已使用LLM生成设计提示和图像提示。意图：一个科技公司logo' additional_kwargs={} response_metadata={} id='1d7ca070-d120-45c6-b8f2-73f223762f83'"
+  ]
+}

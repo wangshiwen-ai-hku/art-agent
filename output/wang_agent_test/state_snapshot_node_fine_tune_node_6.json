@@ -1,0 +1,7 @@
+{
+  "current_svg": "<svg width=\"1000\" height=\"1000\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 1000\"><ns0:rect xmlns:ns0=\"http://www.w3.org/2000/svg\" fill=\"rgb(224, 224, 224)\" height=\"249\" stroke=\"none\" width=\"249\" x=\"0\" y=\"0\" /></svg>",
+  "fine_tune_attempts": 1,
+  "messages": [
+    "content='已完成微调 (尝试 1)' additional_kwargs={} response_metadata={} id='abee497b-e1b9-40d0-82f6-a31af8dc681f'"
+  ]
+}

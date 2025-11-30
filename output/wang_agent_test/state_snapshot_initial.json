@@ -1,0 +1,5 @@
+{
+  "user_intention": "生成一个科技公司的logo，要求现代、简洁、专业，可以包含几何图形和字母元素",
+  "project_dir": "output\\wang_agent_test",
+  "max_iterations": 7
+}
