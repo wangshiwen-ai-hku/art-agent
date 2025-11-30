@@ -1,47 +1,29 @@
-## Logo Design - Abstract Tiger H
+## Psycho App Logo - Iteration 1
 
-**Initial Concept:**
-*   Abstract H letter combined with tiger form.
-*   H strokes form tiger body/tail, dynamic forward pose.
-*   Style: Minimalist vector logo, flat icon, orange & black.
+*   **Core Element:** Letter "P" with abstract, wave/brain-like extension.
+*   **Style:** Minimalist, abstract, clean lines, modern.
+*   **Colors:** Deep teal to warm purple gradient.
+*   **Concept:** Individuality, inner complexity, support, empowerment.
+*   **Issues:** Brain shape not seamlessly integrated, gradient partial, potential scalability issues.
+*   **Next Step:** Preview Image.
 
-**Generated Image:**
-*   Preview image generated based on prompt.
+## Psycho App Logo - Iteration 2 (Improved Prompt)
 
-**Reflection & Improvement:**
-*   **Issue:** Tiger overlaid on H, not integrated. H strokes don't form tiger.
-*   **Improved Prompt:** Seamless integration of H strokes into tiger form (legs, body, tail). Must read as both H and tiger in motion. Flat icon, orange/black.
-*   **Scores:**
-    *   Consistency: 2 (Poor integration)
-    *   Creativity: 4 (Unrealized potential)
-    *   Aesthetics: 5 (Clumsy overlay)
-    *   Simplicity: 8 (Clean, minimalist)
-    *   Usability: 9 (Scalable vector)
-*   **Recommendation:** Focus on making H strokes integral to tiger form.
-*   **Next Step:** ComposeExisting notes:
-
- 5 (Clumsy overlay)
-    *   Simplicity: 8 (Clean, minimalist)
-    *   Usability: 9 (Scalable vector)
-*   **Recommendation:** Focus on making H strokes integral to tiger form.
+*   **Refinement:** Abstract contour fully integrated into "P" structure, smooth gradient across entire form.
+*   **Goal:** More seamless, elegant, and unified design.
+*   **Focus:** Subtle complexity, modern empathy, balance, harmony.
+*   **Next Step:** Preview Image.*   **Goal:** More seamless, elegant, and unified design.
+*   **Focus:** Subtle complexity, modern empathy, balance, harmony.
+*   **Current State:** 'P' integration with brain-like contour and gradient application are not fully seamless or unified. The 'P' is sometimes obscured or the contour appears as an addition rather than integrated.
+*   **Next Step:** Compose*   **Issue:** Brain-like contour and gradient not seamlessly integrated into the 'P'. Contour appears separate or added, not unified. Gradient flow is inconsistent.
+*   **Next Step:** Compose*   **Issue:** Brain-like contour and gradient not seamlessly integrated into the 'P'. Contour appears separate or added, not unified. Gradient flow is inconsistent.
 *   **Next Step:** Compose
 
-New notes:
-
-*   **AI Reflection:** Generated images still fail to integrate H and tiger; tiger is layered on H, not formed by H strokes. Lacks cleverness and unity.
-*   **Improved Design Prompt:** Minimalist logo of a tiger forming the letter 'H'. Tiger's legs form vertical strokes, torso forms horizontal crossbar. Must clearly read as both tiger (leaping) and 'H'. Simple, flat, two-color (orange/black) vector icon on white. No layering.
-*   **Reflection Dimensions:**
-    *   Consistency: 2 (Core instruction not met; tiger separate from H)
-    *   Creativity: 4 (Potential unrealized; simple combination, not clever integration)
-    *   Aesthetics: 4 (Clumsy, forced; separation prevents unity)
-    *   Simplicity: 7 (Minimalist style, but failed integration complicates)
-    *   Usability: 9 (Vector, simple colors ensure scalability)
-*   **Overall Score:** 5.2
-*   **Recommendations:**
-    *   Avoid layering tiger on H.
-    *   Explicitly define which tiger parts form H strokes for true integration.
-*   **Next Step:** Compose*   **Overall Score:** 5.2
-*   **Recommendations:**
-    *   Avoid layering tiger on H.
-    *   Explicitly define which tiger parts form H strokes for true integration.
+*   **Issue:** The 'P' is barely discernible, and the gradient is inconsistently applied. The brain shape appears on top of the 'P'.
 *   **Next Step:** Compose
+
+*   **Issue:** Brain-like contour is still a separate element within the 'P', not integrated into its structure. Gradient is not consistently applied across the entire form.
+*   **Next Step:** Compose
+
+*   **Issue:** The 'P' and brain-like contour are not a single, unified form. The gradient is not continuous across the entire shape.
+*   **Next Step:** Summarise

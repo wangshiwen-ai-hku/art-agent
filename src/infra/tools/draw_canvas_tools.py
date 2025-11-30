@@ -600,4 +600,4 @@ async def run_draw_agent_with_tool(task_description: str, width: int, height: in
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(run_draw_agent_with_tool("""""", 400, 400))
+    asyncio.run(run_draw_agent_with_tool("""画几个星星""", 400, 400))

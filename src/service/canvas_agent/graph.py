@@ -21,7 +21,11 @@ from langgraph.types import Command, interrupt
 from src.agents.base import BaseAgent
 from src.config.manager import AgentConfig
 from src.infra.tools.design_tools import design_agent_with_tool
+
+from src.infra.tools.draw_canvas_tools import draw_agent_with_tool
+from src.infra.tools.edit_canvas_tools import edit_agent_with_tool
 from src.infra.tools.design_general_tools import design_agent_with_tool as design_general_agent_with_tool
+
 from src.infra.tools.design_general_tools import DesignState
 from src.infra.tools.svg_tools import PickPathTools
 
@@ -112,26 +116,20 @@ class CanvasAgent(BaseAgent):
             tools=[],
             prompt=self._system_prompts["chat"],
         )
-        agents[AgentStage.DRAW] = create_react_agent(
-            model=self.init_llm(temperature=0.6),
-            tools=get_tools("draw_agent_with_tool"),
-            prompt=self._system_prompts["draw"],
-        )
-        agents[AgentStage.EDIT] = create_react_agent(
-            model=self.init_llm(temperature=0.5),
-            tools=get_tools("edit_agent_with_tool", "draw_agent_with_tool"),
-            prompt=self._system_prompts["edit"],
-        )
-        agents[AgentStage.DESCRIBE] = create_react_agent(
-            model=self.init_llm(temperature=0.4),
-            tools=list(PickPathTools),
-            prompt=self._system_prompts["describe"],
-        )
-        agents[AgentStage.PICK_PATH] = create_react_agent(
-            model=self.init_llm(temperature=0.4),
-            tools=list(PickPathTools),
-            prompt=self._system_prompts["pick"],
-        )
+        # agents[AgentStage.DRAW] = create_react_agent(
+        #     model=self.init_llm(temperature=0.6),
+        #     tools=get_tools("draw_agent_with_tool"),
+        #     prompt=self._system_prompts["draw"],
+        # )
+        agents[AgentStage.DRAW] = draw_agent_with_tool
+
+        # agents[AgentStage.EDIT] = create_react_agent(
+        #     model=self.init_llm(temperature=0.5),
+        #     tools=get_tools("edit_agent_with_tool", "draw_agent_with_tool"),
+        #     prompt=self._system_prompts["edit"],
+        # )
+        agents[AgentStage.EDIT] = edit_agent_with_tool
+
         agents[AgentStage.GENERATE_IMAGE] = design_general_agent_with_tool
         return agents
 
@@ -153,8 +151,8 @@ class CanvasAgent(BaseAgent):
             logger.info("-> Empty user input received; staying in wait state.")
             return state
 
-        state["user_input"] = user_input
-        stage_override = payload.get("stage")
+        state["user_input"] = user_input # draw a rectangle 意图
+        stage_override = payload.get("stage") # chat (flexible) 主导的
         if stage_override:
             try:
                 override_stage = AgentStage(stage_override)
@@ -192,7 +190,7 @@ class CanvasAgent(BaseAgent):
                 router_result = await self._router_llm.ainvoke(
                     [
                         SystemMessage(content=ROUTER_PROMPT),
-                        HumanMessage(content=user_input),
+                        HumanMessage(content=user_input), # draw a rectangle 意图
                     ]
                 )
                 # Allow the router to emit either legacy intents or the new
@@ -317,12 +315,8 @@ class CanvasAgent(BaseAgent):
         return Command(goto="wait_for_user_input", update=state)
 
     async def draw_node(self, state: CanvasState, config=None):
-        updated_state = await self._invoke_stage_agent(
-            AgentStage.DRAW,
-            state,
-            default_next_stage=AgentStage.CRITIQUE,
-        )
-        return Command(goto="critique_node", update=updated_state)
+        # TODO make the draw can draw svg and end
+        return await self._invoke_stage_agent(AgentStage.DRAW, state)
 
     async def edit_node(self, state: CanvasState, config=None):
         if not state["content"]["current_svg"]:
@@ -399,6 +393,7 @@ class CanvasAgent(BaseAgent):
         return await self._invoke_stage_agent(AgentStage.PICK_PATH, state)
 
     async def generate_image_node(self, state: CanvasState, config=None):
+        # design_general_tool
         return await self._invoke_stage_agent(AgentStage.GENERATE_IMAGE, state)
 
     def _extract_image_urls_from_messages(self, messages: List[BaseMessage]) -> List[str]:
@@ -616,6 +611,7 @@ class CanvasAgent(BaseAgent):
         graph.add_edge("wait_for_user_input", "router_node")
         graph.add_edge("router_node", "chat_node")  # default fallback
         graph.add_edge("chat_node", "wait_for_user_input")
+
         graph.add_edge("plan_node", "draw_node")
         graph.add_edge("draw_node", "critique_node")
         graph.add_edge("critique_node", "wait_for_user_input")
